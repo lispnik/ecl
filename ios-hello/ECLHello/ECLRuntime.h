@@ -24,8 +24,10 @@
 /* Hands VIEW to Lisp as CL-USER::*CANVAS*, so Lisp can build into it. */
 + (void)setCanvas:(UIView *)view;
 
-/* Gives Lisp the addresses of objc_getClass, sel_registerName and
-   objc_msgSend, so it can drive UIKit. Call after loading gui.lisp. */
-+ (void)installObjCBridge;
+/* Initialises the ahead-of-time compiled module linked in as aot.o. */
++ (void)initAOTModule;
+
+/* Exports the bundle's resource directory as CL-USER::*BUNDLE-PATH*. */
++ (void)setBundlePath;
 
 @end

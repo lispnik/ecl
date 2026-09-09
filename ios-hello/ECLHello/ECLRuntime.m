@@ -3,8 +3,7 @@
 #import "ECLRuntime.h"
 
 #import <ecl/ecl.h>
-#import <objc/message.h>
-#import <objc/runtime.h>
+#import "aot-init.h"
 
 /* ECL's headers define bare `t' and other short names; keep UIKit out of this
    translation unit so nothing collides. */
@@ -116,19 +115,21 @@ static cl_object StringToLisp(NSString *s)
   return [result hasPrefix:@";"] ? result : @"";
 }
 
-+ (void)installObjCBridge
++ (void)initAOTModule
 {
-  /* The iOS build is static, so ENABLE_DLOPEN is off and
-     SI:FIND-FOREIGN-SYMBOL refuses to resolve anything. Handing the addresses
-     over directly sidesteps that entirely -- these three are already linked
-     into this binary, and SI:CALL-CFUN (libffi) does not need dlsym. */
-  cl_env_ptr env = ecl_process_env();
-  ecl_setq(env, ecl_make_symbol("*OBJC-GET-CLASS*", "CL-USER"),
-           ecl_make_pointer((void *)&objc_getClass));
-  ecl_setq(env, ecl_make_symbol("*OBJC-SEL-REGISTER*", "CL-USER"),
-           ecl_make_pointer((void *)&sel_registerName));
-  ecl_setq(env, ecl_make_symbol("*OBJC-MSG-SEND*", "CL-USER"),
-           ecl_make_pointer((void *)&objc_msgSend));
+  /* aot.o, compiled on the host for this platform by build-aot.sh. Being real
+     compiled code, its DEFCALLBACK is an ordinary C function: nothing has to
+     allocate executable memory at runtime, which iOS refuses. */
+  ecl_init_module(NULL, AOT_INIT_FUNCTION);
+}
+
++ (void)setBundlePath
+{
+  /* Where the bundled .lisp files live. Lisp resolves objc_msgSend and friends
+     itself now, so this is the only address the app still has to hand over. */
+  ecl_setq(ecl_process_env(), ecl_make_symbol("*BUNDLE-PATH*", "CL-USER"),
+           StringToLisp([NSBundle.mainBundle.resourcePath
+                          stringByAppendingString:@"/"]));
 }
 
 + (void)setCanvas:(UIView *)view
