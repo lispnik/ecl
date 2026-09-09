@@ -12,6 +12,7 @@
 		A1000003000000000000003 /* ViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = A1000103000000000000003 /* ViewController.m */; };
 		A1000004000000000000004 /* ECLRuntime.m in Sources */ = {isa = PBXBuildFile; fileRef = A1000104000000000000004 /* ECLRuntime.m */; };
 		A1000005000000000000005 /* gui.lisp in Resources */ = {isa = PBXBuildFile; fileRef = A1000109000000000000009 /* gui.lisp */; };
+		B1BD1C684361843268991EBF /* callbacks.lisp in Resources */ = {isa = PBXBuildFile; fileRef = B1E5896133ACD34DA21EBB7D /* callbacks.lisp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -25,6 +26,7 @@
 		A1000107000000000000007 /* ECLRuntime.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ECLRuntime.h; sourceTree = "<group>"; };
 		A1000109000000000000009 /* gui.lisp */ = {isa = PBXFileReference; lastKnownFileType = text; name = gui.lisp; path = lisp/gui.lisp; sourceTree = "<group>"; };
 		A1000108000000000000008 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		B1E5896133ACD34DA21EBB7D /* callbacks.lisp */ = {isa = PBXFileReference; lastKnownFileType = text; name = callbacks.lisp; path = lisp/callbacks.lisp; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -57,6 +59,7 @@
 				A1000107000000000000007 /* ECLRuntime.h */,
 				A1000104000000000000004 /* ECLRuntime.m */,
 				A1000109000000000000009 /* gui.lisp */,
+				B1E5896133ACD34DA21EBB7D /* callbacks.lisp */,
 				A1000108000000000000008 /* Info.plist */,
 			);
 			path = ECLHello;
@@ -128,6 +131,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A1000005000000000000005 /* gui.lisp in Resources */,
+				B1BD1C684361843268991EBF /* callbacks.lisp in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
