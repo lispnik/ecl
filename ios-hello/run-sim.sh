@@ -34,6 +34,11 @@ if [ -z "$SIM" ]; then
 fi
 echo "=== simulator $SIM ==="
 
+# aot.o is linked in by the Xcode project but Xcode knows nothing about how it
+# is produced, so it would happily link a stale one. build-aot.sh is a no-op
+# when it is already current.
+./build-aot.sh
+
 xcrun simctl boot "$SIM" 2>/dev/null || true
 xcrun simctl bootstatus "$SIM" -b
 

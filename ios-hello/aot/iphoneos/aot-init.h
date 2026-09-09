@@ -3,6 +3,6 @@
    of the object file and pinned here. */
 #ifndef AOT_INIT_H
 #define AOT_INIT_H
-extern void __ecl_initlqb27doE9VlxC_JKy1xN81(cl_object);
-#define AOT_INIT_FUNCTION __ecl_initlqb27doE9VlxC_JKy1xN81
+extern void __ecl_initlqb27doE9VlxC_nlB3xN81(cl_object);
+#define AOT_INIT_FUNCTION __ecl_initlqb27doE9VlxC_nlB3xN81
 #endif

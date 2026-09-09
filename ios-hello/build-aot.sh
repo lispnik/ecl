@@ -29,6 +29,16 @@ compile_for() {
 
   mkdir -p "aot/$platform"
 
+  # Callers invoke this unconditionally, so decide here whether there is
+  # anything to do. The header is checked too: it is generated from the object,
+  # and without it the app will not compile.
+  if [ -f "aot/$platform/aot.o" ] &&
+     [ -f "aot/$platform/aot-init.h" ] &&
+     [ ! lisp-src/aot.lisp -nt "aot/$platform/aot.o" ]; then
+    echo "$platform: up to date"
+    return 0
+  fi
+
   "$ECL" -norc \
     -eval '(require :cmp)' \
     -eval '(setf ffi::*use-dffi* nil)' \
