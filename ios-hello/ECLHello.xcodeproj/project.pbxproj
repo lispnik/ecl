@@ -1,0 +1,297 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		A1000001000000000000001 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = A1000101000000000000001 /* main.m */; };
+		A1000002000000000000002 /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = A1000102000000000000002 /* AppDelegate.m */; };
+		A1000003000000000000003 /* ViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = A1000103000000000000003 /* ViewController.m */; };
+		A1000004000000000000004 /* ECLRuntime.m in Sources */ = {isa = PBXBuildFile; fileRef = A1000104000000000000004 /* ECLRuntime.m */; };
+		A1000005000000000000005 /* gui.lisp in Resources */ = {isa = PBXBuildFile; fileRef = A1000109000000000000009 /* gui.lisp */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		A1000100000000000000000 /* ECLHello.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ECLHello.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A1000101000000000000001 /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
+		A1000102000000000000002 /* AppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppDelegate.m; sourceTree = "<group>"; };
+		A1000105000000000000005 /* AppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
+		A1000103000000000000003 /* ViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ViewController.m; sourceTree = "<group>"; };
+		A1000106000000000000006 /* ViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ViewController.h; sourceTree = "<group>"; };
+		A1000104000000000000004 /* ECLRuntime.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ECLRuntime.m; sourceTree = "<group>"; };
+		A1000107000000000000007 /* ECLRuntime.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ECLRuntime.h; sourceTree = "<group>"; };
+		A1000109000000000000009 /* gui.lisp */ = {isa = PBXFileReference; lastKnownFileType = text; name = gui.lisp; path = lisp/gui.lisp; sourceTree = "<group>"; };
+		A1000108000000000000008 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		A1000200000000000000000 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		A1000300000000000000000 = {
+			isa = PBXGroup;
+			children = (
+				A1000301000000000000001 /* ECLHello */,
+				A1000302000000000000002 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		A1000301000000000000001 /* ECLHello */ = {
+			isa = PBXGroup;
+			children = (
+				A1000101000000000000001 /* main.m */,
+				A1000105000000000000005 /* AppDelegate.h */,
+				A1000102000000000000002 /* AppDelegate.m */,
+				A1000106000000000000006 /* ViewController.h */,
+				A1000103000000000000003 /* ViewController.m */,
+				A1000107000000000000007 /* ECLRuntime.h */,
+				A1000104000000000000004 /* ECLRuntime.m */,
+				A1000109000000000000009 /* gui.lisp */,
+				A1000108000000000000008 /* Info.plist */,
+			);
+			path = ECLHello;
+			sourceTree = "<group>";
+		};
+		A1000302000000000000002 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				A1000100000000000000000 /* ECLHello.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		A1000400000000000000000 /* ECLHello */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A1000700000000000000000 /* Build configuration list for PBXNativeTarget "ECLHello" */;
+			buildPhases = (
+				A1000500000000000000000 /* Sources */,
+				A1000200000000000000000 /* Frameworks */,
+				A1000600000000000000000 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = ECLHello;
+			productName = ECLHello;
+			productReference = A1000100000000000000000 /* ECLHello.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		A1000800000000000000000 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastUpgradeCheck = 1600;
+				TargetAttributes = {
+					A1000400000000000000000 = {
+						CreatedOnToolsVersion = 16.0;
+					};
+				};
+			};
+			buildConfigurationList = A1000900000000000000000 /* Build configuration list for PBXProject "ECLHello" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = A1000300000000000000000;
+			productRefGroup = A1000302000000000000002 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				A1000400000000000000000 /* ECLHello */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		A1000600000000000000000 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A1000005000000000000005 /* gui.lisp in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		A1000500000000000000000 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A1000002000000000000002 /* AppDelegate.m in Sources */,
+				A1000003000000000000003 /* ViewController.m in Sources */,
+				A1000004000000000000004 /* ECLRuntime.m in Sources */,
+				A1000001000000000000001 /* main.m in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		A1000901000000000000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+			};
+			name = Debug;
+		};
+		A1000902000000000000002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		A1000701000000000000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = Q47YS469F2;
+				"HEADER_SEARCH_PATHS[sdk=iphoneos*]" = "$(SRCROOT)/../ecl-iOS/include";
+				"HEADER_SEARCH_PATHS[sdk=iphonesimulator*]" = "$(SRCROOT)/../ecl-iOS-sim/include";
+				INFOPLIST_FILE = ECLHello/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				"LIBRARY_SEARCH_PATHS[sdk=iphoneos*]" = "$(SRCROOT)/../ecl-iOS/lib";
+				"LIBRARY_SEARCH_PATHS[sdk=iphonesimulator*]" = "$(SRCROOT)/../ecl-iOS-sim/lib";
+				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = (
+					"-lecl",
+					"-leclgc",
+					"-leclgmp",
+					"-leclffi",
+					"-framework",
+					UIKit,
+					"-framework",
+					Foundation,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = org.ecl.ECLHello;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		A1000702000000000000002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = Q47YS469F2;
+				"HEADER_SEARCH_PATHS[sdk=iphoneos*]" = "$(SRCROOT)/../ecl-iOS/include";
+				"HEADER_SEARCH_PATHS[sdk=iphonesimulator*]" = "$(SRCROOT)/../ecl-iOS-sim/include";
+				INFOPLIST_FILE = ECLHello/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				"LIBRARY_SEARCH_PATHS[sdk=iphoneos*]" = "$(SRCROOT)/../ecl-iOS/lib";
+				"LIBRARY_SEARCH_PATHS[sdk=iphonesimulator*]" = "$(SRCROOT)/../ecl-iOS-sim/lib";
+				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = (
+					"-lecl",
+					"-leclgc",
+					"-leclgmp",
+					"-leclffi",
+					"-framework",
+					UIKit,
+					"-framework",
+					Foundation,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = org.ecl.ECLHello;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		A1000900000000000000000 /* Build configuration list for PBXProject "ECLHello" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A1000901000000000000001 /* Debug */,
+				A1000902000000000000002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A1000700000000000000000 /* Build configuration list for PBXNativeTarget "ECLHello" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A1000701000000000000001 /* Debug */,
+				A1000702000000000000002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = A1000800000000000000000 /* Project object */;
+}
