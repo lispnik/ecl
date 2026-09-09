@@ -95,6 +95,13 @@ cross_build() {
     CFLAGS="$CFLAGS -O2 -DNO_ASM"
     CFLAGS="$CFLAGS -DGC_DISABLE_INCREMENTAL -DECL_RWLOCK"
 
+    # configure ties ENABLE_DLOPEN to --enable-shared, but the two are not the
+    # same question. We must build static -- an iOS app links its libraries in
+    # -- yet the process can still dlsym. Without this,
+    # SI:FIND-FOREIGN-SYMBOL refuses to resolve anything, which costs us CFFI:
+    # its ECL backend looks foreign functions up by name.
+    CFLAGS="$CFLAGS -DENABLE_DLOPEN=1"
+
     export CC="clang"
     export CXX="clang++"
     export LD="ld"
