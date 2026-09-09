@@ -160,13 +160,10 @@ static NSArray<NSArray<NSString *> *> *DemoButtons(void)
   /* Both installs have to come after the load: gui.lisp DEFPARAMETERs these
      variables, which would clobber anything set beforehand. */
   NSString *guiError = [ECLRuntime loadBundledLispNamed:@"gui"];
-  [ECLRuntime installObjCBridge];
+  [ECLRuntime initAOTModule];
+  [ECLRuntime setBundlePath];
   [ECLRuntime setCanvas:self.canvas];
 
-  NSString *cbError = [ECLRuntime loadBundledLispNamed:@"callbacks"];
-  if (cbError.length > 0) {
-    [self append:[NSString stringWithFormat:@"\ncallbacks.lisp: %@", cbError]];
-  }
   if (guiError.length > 0) {
     [self append:[NSString stringWithFormat:@"\ngui.lisp: %@", guiError]];
   }
@@ -179,7 +176,8 @@ static NSArray<NSArray<NSString *> *> *DemoButtons(void)
                             @"(code-char 233)",
                             @"(loop for i below 5 collect (expt 2 i))",
                             @"(car 5)",
-                            @"(dlopen-demo)" ]) {
+                            @"(build-demo-gui)",
+                            @"(on-tap)" ]) {
     [self evaluateAndShow:demo];
   }
 
