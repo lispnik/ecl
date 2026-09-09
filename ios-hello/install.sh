@@ -34,6 +34,11 @@ if [ -z "$DEVICE" ]; then
   echo "No available device. Plug in your iPhone, unlock it, and trust this Mac." >&2
   exit 1
 fi
+# aot.o is linked in by the Xcode project but Xcode knows nothing about how it
+# is produced, so it would happily link a stale one. build-aot.sh is a no-op
+# when it is already current.
+./build-aot.sh
+
 echo "=== device $DEVICE ==="
 
 DERIVED=build
