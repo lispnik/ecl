@@ -37,8 +37,24 @@ NATIVE_PREFIX="$SRC_DIR/ecl-native"
 NATIVE_BUILDDIR="$SRC_DIR/build-native"
 NATIVE_ECL="$NATIVE_PREFIX/bin/ecl"
 
-# Rebuild it if it is missing, or if the symbol table has moved on since.
-if [ ! -x "$NATIVE_ECL" ] || [ "$SRC_DIR/src/c/symbols_list.h" -nt "$NATIVE_ECL" ]; then
+# Rebuild it if it is missing, or if anything it is built from has moved on.
+#
+# This used to watch src/c/symbols_list.h alone, on the reasoning that the
+# symbol table is what the cross build depends on. That is true and it is not
+# the only thing that matters: the host ECL is also an ordinary ECL that this
+# project runs, so a fix to any C source belongs in it too. Patching
+# src/c/ffi/libraries.d and finding the host binary unchanged twenty-one hours
+# later is what prompted widening this -- the cross builds had the fix, because
+# they are rebuilt from scratch every time, and the host silently did not.
+#
+# find -newer over the whole of src/c and src/h rather than a list of files:
+# a list is a thing to keep current, and this one was already out of date.
+host_stale() {
+  [ ! -x "$NATIVE_ECL" ] && return 0
+  [ -n "`find \"$SRC_DIR/src/c\" \"$SRC_DIR/src/h\" -type f -newer \"$NATIVE_ECL\" -print -quit 2>/dev/null`" ]
+}
+
+if host_stale; then
   echo "=== building host ECL in $NATIVE_BUILDDIR ==="
   (
     # A host build, so none of the iOS settings below -- nor any inherited from
