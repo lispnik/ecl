@@ -29,6 +29,10 @@
 
 * Pending changes since 26.5.5
 
+- bugfix: SI:MAKE-DYNAMIC-CALLBACK signals an error when libffi cannot
+  allocate an executable closure, instead of handing the null pointer to
+  ffi_prep_closure_loc and dying with no indication of the cause
+
 - build: support for Microsoft Visual Studio Compiler has been dropped
 - clos: ensure that the instance is not obsolete in optimized writer (#851)
 - reader: refactor reader and improve token parsing (escaping and packages)

@@ -996,6 +996,16 @@ si_free_ffi_closure(cl_object closure)
     void *executable_region;
     ffi_closure *closure = ffi_closure_alloc(sizeof(ffi_closure), &executable_region);
 
+    /* It can return NULL: the executable mapping it needs is exactly
+     * the thing a hardened platform may refuse. Left unchecked, the
+     * null pointer went into ffi_prep_closure_loc and the process died
+     * with no indication that this was the cause -- which is not the
+     * way to learn that a platform cannot allocate closures. */
+    if (closure == NULL) {
+      FEerror("Unable to build callback ~A: libffi could not allocate "
+              "an executable closure on this platform.", 1, sym);
+    }
+
     cl_object closure_object = ecl_make_foreign_data(@':pointer-void',
                                                      sizeof(ffi_closure),
                                                      closure);
