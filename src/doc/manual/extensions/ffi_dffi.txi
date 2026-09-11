@@ -7,3 +7,35 @@
 This variable controls whether DFFI is used or not.
 @end defvr
 
+
+@subsubsection Structures by value
+
+The dynamic interface passes and returns structures by value. A
+structure argument is given as foreign data (@pxref{Foreign objects})
+holding at least as many bytes as the structure occupies; a structure
+result comes back as fresh foreign data of the structure's size, tagged
+with its type, and is read with @code{ffi:get-slot-value} like any
+other.
+
+@code{ffi:def-function} and @code{ffi:defcallback} resolve the type
+names themselves. @code{si:call-cfun}, the primitive beneath them, reads
+its designators in C and cannot look a name up: hand it the
+@code{(:struct (@var{name} @var{type}) ...)} list the name stands for,
+which @code{ffi::%convert-to-ffi-type} returns. Inside a structure a
+member may itself be a structure or an @code{(:array @var{type}
+@var{n})}; a pointer member is a pointer whatever it points to.
+
+Unions are refused. libffi has no union type, and the usual imitation --
+a structure holding only the largest member -- classifies wrongly for
+register passing exactly when the members disagree about their class,
+which is the case that matters.
+
+@lisp
+(ffi:def-struct range (location :long) (length :long))
+
+(si:call-cfun (si:find-foreign-symbol "range_make" :default :pointer-void 0)
+              (ffi::%convert-to-ffi-type 'range)
+              '(:long :long)
+              '(6 5))
+@result{} #<foreign (:STRUCT (LOCATION :LONG) (LENGTH :LONG)) ...>
+@end lisp

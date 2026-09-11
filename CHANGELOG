@@ -29,6 +29,21 @@
 
 * Pending changes since 26.5.5
 
+- ffi: the dynamic interface passes and returns structures by value.
+  SI:CALL-CFUN, FFI:DEF-FUNCTION and FFI:DEFCALLBACK accept (:STRUCT ...)
+  designators, with nested structures and array members; libffi supplies
+  the layout and the calling convention, so a long beside a double no
+  longer has to be guessed at in terms of scalars
+
+- bugfix: SI:MAKE-DYNAMIC-CALLBACK returns the closure's executable entry
+  point rather than its writable record. The two coincide only where memory
+  may be both; on iOS and arm64 macOS libffi maps them apart, and calling
+  the record jumped into the heap. The callback's data is also kept
+  reachable by the collector now, and a failed closure allocation is an
+  error rather than a null-pointer crash. A dynamic callback also imports
+  the thread it is called on, so a closure handed to code that runs on its
+  own threads no longer dies in ecl_process_env()
+
 - build: support for Microsoft Visual Studio Compiler has been dropped
 - clos: ensure that the instance is not obsolete in optimized writer (#851)
 - reader: refactor reader and improve token parsing (escaping and packages)
