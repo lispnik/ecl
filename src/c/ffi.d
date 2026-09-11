@@ -1045,7 +1045,7 @@ resize_call_stack(cl_env_ptr env, cl_index new_size)
 static int
 prepare_cif(cl_env_ptr the_env, ffi_cif *cif, cl_object return_type,
             cl_object arg_types, cl_object args,
-            cl_object cc_type, ffi_type ***output_copy)
+            cl_object cc_type, cl_object fixed, ffi_type ***output_copy)
 {
   int n, ok;
   cl_index nargs;
@@ -1100,7 +1100,24 @@ prepare_cif(cl_env_ptr the_env, ffi_cif *cif, cl_object return_type,
   } else {
     types = the_env->ffi_types;
   }
-  ok = ffi_prep_cif(cif, ecl_foreign_cc_code(cc_type), n, types[0], types + 1);
+  /* FIXED, when given, is how many of the arguments are the ones the
+     prototype names; the rest are variadic.  The distinction is the ABI's,
+     not a formality: on AArch64 Darwin variadic arguments travel on the
+     stack, and a cif prepared as if they were fixed puts them in registers
+     the callee never reads.  libffi also insists the variadic ones be
+     promoted the way C does -- no float, char or short past the fixed
+     ones -- and refuses with FFI_BAD_ARGTYPE otherwise. */
+  if (Null(fixed)) {
+    ok = ffi_prep_cif(cif, ecl_foreign_cc_code(cc_type), n, types[0], types + 1);
+  } else {
+    cl_fixnum nfixed = ecl_to_fixnum(fixed);
+    if (nfixed < 0 || nfixed > n) {
+      FEerror("In CALL-CFUN, ~D fixed arguments of ~D", 2,
+              fixed, ecl_make_fixnum(n));
+    }
+    ok = ffi_prep_cif_var(cif, ecl_foreign_cc_code(cc_type), nfixed, n,
+                          types[0], types + 1);
+  }
   if (ok != FFI_OK) {
     if (ok == FFI_BAD_ABI) {
       FEerror("In CALL-CFUN, not a valid ABI: ~A", 1,
@@ -1109,20 +1126,25 @@ prepare_cif(cl_env_ptr the_env, ffi_cif *cif, cl_object return_type,
     if (ok == FFI_BAD_TYPEDEF) {
       FEerror("In CALL-CFUN, wrong or malformed argument types", 0);
     }
+    if (ok == FFI_BAD_ARGTYPE) {
+      FEerror("In CALL-CFUN, a variadic argument is not promoted: past the "
+              "~D fixed arguments a float must be passed as :double and a "
+              "char or short as :int, as C would", 1, fixed);
+    }
     FEerror("In CALL-CFUN, libffi could not prepare the call (status ~D)", 1,
             ecl_make_fixnum(ok));
   }
   return n;
 }
 
-@(defun si::call-cfun (fun return_type arg_types args &optional (cc_type @':default'))
+@(defun si::call-cfun (fun return_type arg_types args &optional (cc_type @':default') (fixed ECL_NIL))
   void *cfun = ecl_foreign_data_pointer_safe(fun);
   cl_object object;
   volatile cl_index sp;
   ffi_cif cif;
 @ {
   sp = ECL_STACK_INDEX(the_env);
-  prepare_cif(the_env, &cif, return_type, arg_types, args, cc_type, NULL);
+  prepare_cif(the_env, &cif, return_type, arg_types, args, cc_type, fixed, NULL);
   if (cif.rtype->type == FFI_TYPE_STRUCT) {
     /* A structure comes back into fresh foreign data tagged with its
        type. The buffer is at least as large as libffi asks for -- it
@@ -1206,7 +1228,7 @@ si_free_ffi_closure(cl_object closure)
     ffi_cif *cif = ecl_alloc(sizeof(ffi_cif));
     ffi_type **types;
     int n = prepare_cif(the_env, cif, return_type, arg_types, ECL_NIL, cc_type,
-                        &types);
+                        ECL_NIL, &types);
 
     /* libffi allocates executable memory for us. ffi_closure_alloc()
      * returns a pointer to memory and a pointer to the beginning of

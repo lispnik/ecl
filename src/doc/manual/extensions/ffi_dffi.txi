@@ -39,3 +39,21 @@ which is the case that matters.
               '(6 5))
 @result{} #<foreign (:STRUCT (LOCATION :LONG) (LENGTH :LONG)) ...>
 @end lisp
+
+@subsubsection Variadic functions
+
+@code{si:call-cfun} takes an optional sixth argument, the number of fixed
+arguments, and prepares a variadic call when it is given. The distinction
+is the calling convention's: on AArch64 Darwin variadic arguments travel on
+the stack, and a call prepared as if they were fixed puts them in registers
+the callee never reads. The variadic arguments must be promoted as C
+promotes them -- a float passed as @code{:double}, a char or short as
+@code{:int} -- and libffi refuses the call otherwise.
+
+@lisp
+(si:call-cfun (si:find-foreign-symbol "snprintf" :default :pointer-void 0)
+              :int
+              '(:pointer-void :unsigned-long :cstring :int :double)
+              (list buffer 64 "%d %.1f" 42 2.5d0)
+              :default 3)
+@end lisp
