@@ -29,9 +29,12 @@
 
 * Pending changes since 26.5.5
 
-- bugfix: SI:MAKE-DYNAMIC-CALLBACK signals an error when libffi cannot
-  allocate an executable closure, instead of handing the null pointer to
-  ffi_prep_closure_loc and dying with no indication of the cause
+- bugfix: SI:MAKE-DYNAMIC-CALLBACK returns the closure's executable entry
+  point rather than its writable record. The two coincide only where memory
+  may be both; on iOS and arm64 macOS libffi maps them apart, and calling
+  the record jumped into the heap. The callback's data is also kept
+  reachable by the collector now, and a failed closure allocation is an
+  error rather than a null-pointer crash
 
 - build: support for Microsoft Visual Studio Compiler has been dropped
 - clos: ensure that the instance is not obsolete in optimized writer (#851)
