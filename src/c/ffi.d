@@ -957,6 +957,14 @@ callback_executor(ffi_cif *cif, void *result, void **args, void *userdata)
   cl_object fun = ECL_CONS_CAR(data);
   cl_object ret_type = (data = ECL_CONS_CDR(data), ECL_CONS_CAR(data));
   cl_object arg_types = (data = ECL_CONS_CDR(data), ECL_CONS_CAR(data));
+  /* A callback is called on whatever thread the foreign code likes, and
+   * a thread ECL did not create has no environment: ecl_process_env()
+   * on one is a fatal internal error. Importing it here is what makes a
+   * closure callable from a libdispatch worker or any other foreign
+   * thread, and releasing it afterwards keeps the import from
+   * accumulating. On a thread that is already ECL's, this is a lookup
+   * and IMPORTED is false. */
+  bool imported = ecl_import_current_thread(ECL_NIL, ECL_NIL);
   cl_env_ptr the_env = ecl_process_env();
   struct ecl_stack_frame frame_aux;
   const cl_object frame = ecl_stack_frame_open(the_env, (cl_object)&frame_aux, 0);
@@ -972,6 +980,9 @@ callback_executor(ffi_cif *cif, void *result, void **args, void *userdata)
   x = ecl_apply_from_stack_frame(frame, fun);
   ecl_stack_frame_close(frame);
   ecl_foreign_data_set_elt(result, ecl_foreign_type_code(ret_type), x);
+  /* After the result is written: X is a Lisp object, and this thread
+   * is not somewhere to be reading one once it is released. */
+  if (imported) ecl_release_current_thread();
 }
 
 cl_object

@@ -177,3 +177,41 @@ int foo () {
   (is (eql (ffi:get-slot-value *the-struct* 'foo-struct 'y) 3.2d0))
   (is (eql (setf (ffi:get-slot-value *the-struct* 'foo-struct 'x) 43) 43))
   (is (eql (ffi:get-slot-value *the-struct* 'foo-struct 'x) 43)))
+
+;;; Date: 2026-09-11 (Matthew Kennedy)
+;;; Description:
+;;;
+;;;     A dynamic callback is called on whatever thread the foreign code
+;;;     likes. One ECL did not create has no environment, and asking for
+;;;     it was a fatal internal error, so the executor now imports the
+;;;     thread first. This calls a closure from a pthread Lisp has never
+;;;     heard of; without the import the process dies rather than fails.
+#-ecl-bytecmp
+(test ffi.0010.dffi-callback-on-a-foreign-thread
+  (with-open-file (s "ffi-0010-thread.lsp" :direction :output
+                                           :if-exists :supersede
+                                           :if-does-not-exist :create)
+    (mapc #'(lambda (form) (print form s))
+          '((in-package #:cl-test)
+            (ffi:clines "
+#include <pthread.h>
+struct ffi_0010_job { int (*f)(int); int x; int result; };
+static void *ffi_0010_run(void *p) {
+  struct ffi_0010_job *job = p;
+  job->result = job->f(job->x);
+  return 0;
+}
+int ffi_0010_call_on_new_thread(int (*f)(int), int x) {
+  struct ffi_0010_job job = { f, x, -1 };
+  pthread_t thread;
+  if (pthread_create(&thread, 0, ffi_0010_run, &job) != 0) return -2;
+  pthread_join(thread, 0);
+  return job.result;
+}")
+            (defun ffi-0010-address ()
+              (ffi:c-inline () () :pointer-void "(void*)&ffi_0010_call_on_new_thread"
+                            :one-liner t))
+            (eval '(ffi:defcallback ffi-0010-double :int ((a :int)) (* 2 a))))))
+  (is (not (null (compile-file "ffi-0010-thread.lsp" :load t))))
+  (is (eql 42 (si::call-cfun (ffi-0010-address) :int '(:pointer-void :int)
+                             (list (ffi:callback 'ffi-0010-double) 21)))))
