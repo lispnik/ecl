@@ -348,10 +348,14 @@ mixed apply_mixed(mixed (*f)(mixed, long), mixed m, long k) { return f(m, k); }
       (is (equal (ffi-0008-type 'ffi-0008-range) (si::foreign-data-tag r))))))
 
 ;;; What the dynamic FFI refuses, and that it refuses rather than guesses.
-#-ecl-bytecmp
+;;; Self-contained: every refusal happens while the call is being prepared,
+;;; before the function pointer is used, so a null one will do and nothing
+;;; compiled in another test is needed.
+(ffi:def-foreign-type ffi-0009-pt (:struct (x :double) (y :double)))
+
 (test ffi.0009.dffi-structures-refused
-  (let ((pt (ffi::%convert-to-ffi-type 'ffi-0008-pt))
-        (fn (ffi-0008-address-of "pt_scale")))
+  (let ((pt (ffi::%convert-to-ffi-type 'ffi-0009-pt))
+        (fn (ffi:make-pointer 0 :void)))
     ;; not foreign data at all
     (signals error (si::call-cfun fn pt (list pt :double) (list 42 1d0)))
     ;; foreign data, but too small to be one of these
@@ -359,13 +363,18 @@ mixed apply_mixed(mixed (*f)(mixed, long), mixed m, long k) { return f(m, k); }
                                   (list (ffi:allocate-foreign-object :int) 1d0)))
     ;; a union has no libffi description that is right for every ABI
     (signals error (si::call-cfun fn :void '((:union (a :long) (b :double)))
-                                  (list (ffi:allocate-foreign-object 'ffi-0008-pt))))
+                                  (list (ffi:allocate-foreign-object 'ffi-0009-pt))))
     ;; an empty structure has no representation
-    (signals error (si::call-cfun fn :void '((:struct)) (list (ffi:allocate-foreign-object 'ffi-0008-pt))))
+    (signals error (si::call-cfun fn :void '((:struct))
+                                  (list (ffi:allocate-foreign-object 'ffi-0009-pt))))
     ;; and the Lisp side resolves names but leaves the decision to C
-    (is (equal pt (ffi::%convert-to-dffi-arg-type 'ffi-0008-pt)))
-    (is (eq :pointer-void (ffi::%convert-to-dffi-arg-type '(* ffi-0008-pt))))
+    (is (equal pt (ffi::%convert-to-dffi-arg-type 'ffi-0009-pt)))
+    (is (eq :pointer-void (ffi::%convert-to-dffi-arg-type '(* ffi-0009-pt))))
     (is (eq :pointer-void (ffi::%convert-to-dffi-arg-type '(:array :int 3))))))
+
+;;; Date: 2026-09-11 (Matthew Kennedy)
+;;; Description:
+;;;
 ;;;     A dynamic callback is called on whatever thread the foreign code
 ;;;     likes. One ECL did not create has no environment, and asking for
 ;;;     it was a fatal internal error, so the executor now imports the
