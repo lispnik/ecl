@@ -215,3 +215,21 @@ int ffi_0010_call_on_new_thread(int (*f)(int), int x) {
   (is (not (null (compile-file "ffi-0010-thread.lsp" :load t))))
   (is (eql 42 (si::call-cfun (ffi-0010-address) :int '(:pointer-void :int)
                              (list (ffi:callback 'ffi-0010-double) 21)))))
+
+;;; Date: 2026-09-11 (Matthew Kennedy)
+;;; Description:
+;;;
+;;;     A dynamic callback has to outlive every collection between its
+;;;     creation and its last call: the address is in foreign hands. The
+;;;     closure record is malloc memory with a finalizer on the object
+;;;     that wraps it, and that object must be reachable for as long as
+;;;     the callback is -- it was once left out of the list that keeps it
+;;;     so, and the first collection freed the record under a live
+;;;     trampoline.
+#+(and dffi (not ecl-bytecmp))
+(test ffi.0011.dffi-callback-survives-a-collection
+  (eval '(ffi:defcallback ffi-0011-triple :int ((a :int)) (* 3 a)))
+  (let ((callback (ffi:callback 'ffi-0011-triple)))
+    (dotimes (i 3)
+      (si:gc t)
+      (is (eql 42 (si::call-cfun callback :int '(:int) '(14)))))))

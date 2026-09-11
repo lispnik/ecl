@@ -1038,7 +1038,7 @@ si_free_ffi_closure(cl_object closure)
      * see. It lives in the symbol's plist beside the callback, with the
      * closure record in it, so that neither is freed before the symbol
      * lets go of the callback. */
-    cl_object data = cl_list(6,
+    cl_object data = cl_list(7,
                              fun, return_type, arg_types, cc_type,
                              ecl_make_foreign_data(@':pointer-void',
                                                    sizeof(*cif), cif),
