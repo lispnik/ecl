@@ -1006,18 +1006,35 @@ si_free_ffi_closure(cl_object closure)
               "an executable closure on this platform.", 1, sym);
     }
 
+    /* Two addresses, and they are not interchangeable. CLOSURE is the
+     * writable record libffi fills in, and what ffi_closure_free wants
+     * back. EXECUTABLE_REGION is the entry point -- what C calls. On a
+     * platform where memory is never both writable and executable, the
+     * two are mapped apart: on iOS and arm64 macOS the entry point is a
+     * slot in a page of trampolines, and the record is ordinary malloc
+     * memory that starts with two pointers, not code. This used to hand
+     * out CLOSURE as the callback, which works only where the two happen
+     * to coincide, and on any other platform jumps into the heap. */
     cl_object closure_object = ecl_make_foreign_data(@':pointer-void',
                                                      sizeof(ffi_closure),
                                                      closure);
+    cl_object entry = ecl_make_foreign_data(@':pointer-void', 0,
+                                            executable_region);
     si_set_finalizer(closure_object, @'si::free-ffi-closure');
 
-    cl_object data = cl_list(5,
+    /* The closure record points at DATA from malloc memory the collector
+     * never looks at, so DATA has to be kept alive from somewhere it can
+     * see. It lives in the symbol's plist beside the callback, with the
+     * closure record in it, so that neither is freed before the symbol
+     * lets go of the callback. */
+    cl_object data = cl_list(6,
                              fun, return_type, arg_types, cc_type,
                              ecl_make_foreign_data(@':pointer-void',
                                                    sizeof(*cif), cif),
                              ecl_make_foreign_data(@':pointer-void',
                                                    (n + 1) * sizeof(ffi_type*),
-                                                   types));
+                                                   types),
+                             closure_object);
     int status = ffi_prep_closure_loc(closure, cif, callback_executor,
                                       data, executable_region);
 
@@ -1025,7 +1042,8 @@ si_free_ffi_closure(cl_object closure)
       FEerror("Unable to build callback. libffi returns ~D", 1,
               ecl_make_fixnum(status));
     }
-    si_put_sysprop(sym, @':callback', closure_object);
-    @(return closure_object);
+    si_put_sysprop(sym, @':callback', entry);
+    si_put_sysprop(sym, ecl_make_keyword("CALLBACK-DATA"), data);
+    @(return entry);
 } @)
 #endif /* HAVE_LIBFFI */
