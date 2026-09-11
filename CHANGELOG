@@ -33,7 +33,8 @@
   SI:CALL-CFUN, FFI:DEF-FUNCTION and FFI:DEFCALLBACK accept (:STRUCT ...)
   designators, with nested structures and array members; libffi supplies
   the layout and the calling convention, so a long beside a double no
-  longer has to be guessed at in terms of scalars
+  longer has to be guessed at in terms of scalars. SI:CALL-CFUN also makes
+  a variadic call when told how many arguments are fixed
 
 - bugfix: SI:MAKE-DYNAMIC-CALLBACK returns the closure's executable entry
   point rather than its writable record. The two coincide only where memory

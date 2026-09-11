@@ -427,3 +427,42 @@ int ffi_0010_call_on_new_thread(int (*f)(int), int x) {
     (dotimes (i 3)
       (si:gc t)
       (is (eql 42 (si::call-cfun callback :int '(:int) '(14)))))))
+
+;;; Date: 2026-09-11 (Matthew Kennedy)
+;;; Description:
+;;;
+;;;     SI:CALL-CFUN makes a variadic call when told how many arguments
+;;;     are fixed. On AArch64 Darwin the variadic ones travel on the
+;;;     stack, so a cif prepared as if they were fixed puts them in
+;;;     registers the callee never reads -- which is why this needs
+;;;     saying rather than being inferred. snprintf is the variadic
+;;;     function every libc has.
+#-ecl-bytecmp
+(test ffi.0012.dffi-variadic-call
+  (with-open-file (s "ffi-0012-variadic.lsp" :direction :output
+                                             :if-exists :supersede
+                                             :if-does-not-exist :create)
+    (mapc #'(lambda (form) (print form s))
+          '((in-package #:cl-test)
+            (ffi:clines "#include <stdio.h>")
+            (defun ffi-0012-snprintf ()
+              (ffi:c-inline () () :pointer-void "(void*)&snprintf" :one-liner t)))))
+  (is (not (null (compile-file "ffi-0012-variadic.lsp" :load t))))
+  (let ((buffer (ffi:allocate-foreign-object :char 64)))
+    ;; Three fixed -- the buffer, its size and the format -- then an int, a
+    ;; string and a double, promoted the way C would promote them.
+    (is (eql 8 (si::call-cfun (ffi-0012-snprintf) :int
+                              '(:pointer-void :unsigned-long :cstring :int :cstring :double)
+                              (list buffer 64 "%d %s %.1f" 42 "x" 2.5d0)
+                              :default 3)))
+    (is (string= "42 x 2.5" (ffi:convert-from-foreign-string buffer)))
+    ;; An unpromoted variadic argument is refused, not passed wrongly.
+    (signals error (si::call-cfun (ffi-0012-snprintf) :int
+                                  '(:pointer-void :unsigned-long :cstring :float)
+                                  (list buffer 64 "%f" 1.5)
+                                  :default 3))
+    ;; More fixed arguments than there are is nonsense, and says so.
+    (signals error (si::call-cfun (ffi-0012-snprintf) :int
+                                  '(:pointer-void :unsigned-long :cstring)
+                                  (list buffer 64 "x")
+                                  :default 4))))
