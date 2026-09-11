@@ -53,6 +53,12 @@ https://github.com/lispnik/asdf-ios-app, which build this fork's `develop`
 Each is intended for upstream; when one lands there, its branch is
 deleted here and the next merge from upstream carries nothing for it.
 
+Some of the changes here were written with the help of an LLM (Claude,
+via Claude Code). The commits say so in their trailers. Every one was
+built, run against ECL's own test suite, and where it concerns iOS,
+measured on a device; the diagnoses in the commit messages are of
+observed behaviour, not description of intent.
+
 ---
 
 ECL stands for Embeddable Common-Lisp. The ECL project aims to
