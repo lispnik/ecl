@@ -29,6 +29,12 @@
 
 * Pending changes since 26.5.5
 
+- ffi: the dynamic interface passes and returns structures by value.
+  SI:CALL-CFUN, FFI:DEF-FUNCTION and FFI:DEFCALLBACK accept (:STRUCT ...)
+  designators, with nested structures and array members; libffi supplies
+  the layout and the calling convention, so a long beside a double no
+  longer has to be guessed at in terms of scalars
+
 - bugfix: SI:MAKE-DYNAMIC-CALLBACK returns the closure's executable entry
   point rather than its writable record. The two coincide only where memory
   may be both; on iOS and arm64 macOS libffi maps them apart, and calling

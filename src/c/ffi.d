@@ -229,13 +229,178 @@ static ffi_type *ecl_type_to_libffi_types[] = {
 };
 
 static ffi_type *
-ecl_type_to_libffi_type(cl_object type) {
+ecl_scalar_to_libffi_type(cl_object type) {
   enum ecl_ffi_tag tag = ecl_foreign_type_code(type);
   ffi_type *result = ecl_type_to_libffi_types[tag];
   if (result == NULL) {
     FEerror("Dynamic FFI cannot encode argument of type ~s.", 1, type);
   }
   return result;
+}
+
+/*
+ * Aggregates.
+ *
+ * libffi describes a structure as an ffi_type of kind FFI_TYPE_STRUCT
+ * whose ELEMENTS is a NULL-terminated array of member types. From that it
+ * works out the size and alignment and -- the part nothing else can do
+ * portably -- how the structure travels: which members ride in which
+ * registers, when the whole thing goes to memory instead, and when the
+ * callee is handed a hidden pointer to write its result through. All of
+ * the code below exists to arrive at that description.
+ *
+ * A type designator is what FFI::%CONVERT-TO-FFI-TYPE produces, with the
+ * names already resolved:
+ *
+ *     keyword                         a scalar from ecl_foreign_type_table
+ *     (* type)                        a pointer, whatever it points to
+ *     (:struct (name type) ...)       a structure, passed by value
+ *     (:array type n)                 n consecutive members of a structure
+ *
+ * Unions are refused. libffi has no union type, and the usual imitation --
+ * a structure holding only the largest member -- gets the register class
+ * wrong exactly when the members disagree about it, which is the case
+ * that matters.
+ */
+
+static cl_object
+member_type(cl_object member, cl_object owner)
+{
+  /* (name type), as DEF-STRUCT writes it, or (name . type) as the manual
+     describes it. */
+  if (CONSP(member)) {
+    cl_object rest = ECL_CONS_CDR(member);
+    if (CONSP(rest)) return ECL_CONS_CAR(rest);
+    if (!Null(rest)) return rest;
+  }
+  FEerror("Malformed member ~S in structure type ~S", 2, member, owner);
+}
+
+static cl_index
+array_length(cl_object type, cl_object owner)
+{
+  cl_object rest = ECL_CONS_CDR(type);
+  if (CONSP(rest) && CONSP(ECL_CONS_CDR(rest))) {
+    cl_object n = ECL_CONS_CAR(ECL_CONS_CDR(rest));
+    if (ECL_FIXNUMP(n) && ecl_fixnum(n) > 0)
+      return ecl_fixnum(n);
+  }
+  FEerror("Array member ~S of structure type ~S needs a fixed, positive length", 2,
+          type, owner);
+}
+
+static ffi_type *ecl_type_to_libffi_type(cl_object type);
+
+/* How many libffi elements a member contributes: one, or for an array
+   its length times what one element contributes. */
+static cl_index
+member_element_count(cl_object type, cl_object owner)
+{
+  if (CONSP(type) && ECL_CONS_CAR(type) == ecl_make_keyword("ARRAY")) {
+    return array_length(type, owner)
+      * member_element_count(ECL_CONS_CAR(ECL_CONS_CDR(type)), owner);
+  }
+  return 1;
+}
+
+static cl_index
+fill_member_elements(ffi_type **elements, cl_index i, cl_object type, cl_object owner)
+{
+  if (CONSP(type) && ECL_CONS_CAR(type) == ecl_make_keyword("ARRAY")) {
+    cl_index n = array_length(type, owner), k;
+    cl_object elt = ECL_CONS_CAR(ECL_CONS_CDR(type));
+    for (k = 0; k < n; k++)
+      i = fill_member_elements(elements, i, elt, owner);
+    return i;
+  }
+  elements[i] = ecl_type_to_libffi_type(type);
+  return i + 1;
+}
+
+static ffi_type *
+ecl_struct_to_libffi_type(cl_object type)
+{
+  cl_object members = ECL_CONS_CDR(type), l;
+  cl_index n = 0, i = 0;
+  ffi_type *out, **elements;
+  for (l = members; !Null(l); l = ECL_CONS_CDR(l)) {
+    if (!CONSP(l))
+      FEerror("Malformed structure type ~S", 1, type);
+    n += member_element_count(member_type(ECL_CONS_CAR(l), type), type);
+  }
+  if (n == 0)
+    FEerror("Dynamic FFI cannot pass an empty structure ~S by value", 1, type);
+  /* ecl_alloc rather than ecl_alloc_atomic on both: the element array
+     holds pointers to nested structure types that live nowhere else, and
+     the collector has to be able to see them. */
+  elements = ecl_alloc((n + 1) * sizeof(ffi_type *));
+  out = ecl_alloc(sizeof(ffi_type));
+  for (l = members; !Null(l); l = ECL_CONS_CDR(l))
+    i = fill_member_elements(elements, i, member_type(ECL_CONS_CAR(l), type), type);
+  elements[n] = NULL;
+  out->size = 0;
+  out->alignment = 0;
+  out->type = FFI_TYPE_STRUCT;
+  out->elements = elements;
+  /* Fills in size and alignment now rather than at ffi_prep_cif time, so
+     that a value can be checked against the size before any call is
+     made. It also rejects a member libffi cannot lay out, such as :void. */
+  if (ffi_get_struct_offsets(FFI_DEFAULT_ABI, out, NULL) != FFI_OK)
+    FEerror("Dynamic FFI cannot lay out structure type ~S", 1, type);
+  return out;
+}
+
+static ffi_type *
+ecl_type_to_libffi_type(cl_object type)
+{
+  if (CONSP(type)) {
+    cl_object head = ECL_CONS_CAR(type);
+    if (head == @'*')
+      return &ffi_type_pointer;
+    if (head == @'quote' && CONSP(ECL_CONS_CDR(type)))
+      return ecl_type_to_libffi_type(ECL_CONS_CAR(ECL_CONS_CDR(type)));
+    if (head == ecl_make_keyword("STRUCT"))
+      return ecl_struct_to_libffi_type(type);
+    if (head == ecl_make_keyword("UNION"))
+      FEerror("Dynamic FFI cannot pass a union by value: ~S", 1, type);
+    if (head == ecl_make_keyword("ARRAY"))
+      FEerror("Dynamic FFI cannot pass an array by value: ~S. "
+              "Pass a pointer, or put it inside a structure.", 1, type);
+    FEerror("~S does not denote a foreign type.", 1, type);
+  }
+  return ecl_scalar_to_libffi_type(type);
+}
+
+/* The tag through which a non-aggregate value is read or written. A
+   pointer designator carries a pointee type the scalar table knows
+   nothing about, and is a void pointer for this purpose. */
+static enum ecl_ffi_tag
+scalar_tag(cl_object type)
+{
+  if (CONSP(type) && ECL_CONS_CAR(type) == @'*')
+    return ECL_FFI_POINTER_VOID;
+  return ecl_foreign_type_code(type);
+}
+
+/* Where a structure passed by value is read from. libffi copies SIZE
+   bytes out of whatever memory the foreign pointer names. A size of zero
+   on the object means unknown -- a bare pointer -- and is taken on
+   trust; a known size that is too small is refused. */
+static void *
+aggregate_pointer(cl_object object, cl_object type, cl_index size)
+{
+  if (ecl_unlikely(ecl_t_of(object) != t_foreign)) {
+    FEerror("~S is not foreign data. A structure of type ~S is passed by "
+            "value from the memory that a foreign pointer names.",
+            2, object, type);
+  }
+  if (object->foreign.size != 0 && object->foreign.size < size) {
+    FEerror("Foreign data ~S holds ~D bytes, fewer than the ~D that "
+            "structure type ~S occupies.",
+            4, object, ecl_make_fixnum(object->foreign.size),
+            ecl_make_fixnum(size), type);
+  }
+  return object->foreign.data;
 }
 #endif /* HAVE_LIBFFI */
 
@@ -853,8 +1018,11 @@ static void
 resize_call_stack(cl_env_ptr env, cl_index new_size)
 {
   cl_index i;
+  /* Scanned, not atomic: a structure type built for one call is
+     referenced from here and from nowhere the collector would otherwise
+     look. */
   ffi_type **types =
-    ecl_alloc_atomic((new_size + 1) * sizeof(ffi_type*));
+    ecl_alloc((new_size + 1) * sizeof(ffi_type*));
   union ecl_ffi_values *values =
     ecl_alloc_atomic((new_size + 1) * sizeof(union ecl_ffi_values));
   union ecl_ffi_values **values_ptrs =
@@ -880,40 +1048,54 @@ prepare_cif(cl_env_ptr the_env, ffi_cif *cif, cl_object return_type,
             cl_object cc_type, ffi_type ***output_copy)
 {
   int n, ok;
+  cl_index nargs;
   ffi_type **types;
-  enum ecl_ffi_tag type;
   cl_object arg_type;
-  if (!the_env->ffi_args_limit)
+  if (!LISTP(arg_types)) {
+    FEerror("In CALL-CFUN, types lists is not a proper list", 0);
+  }
+  /* Sized up front. A resize in the middle of the loop would rebuild
+     the pointer array, and an entry that points at a structure rather
+     than into the values array must survive that. */
+  nargs = ecl_length(arg_types);
+  if (nargs > the_env->ffi_args_limit)
+    resize_call_stack(the_env, nargs + 32);
+  else if (!the_env->ffi_args_limit)
     resize_call_stack(the_env, 32);
   the_env->ffi_types[0] = ecl_type_to_libffi_type(return_type);
   for (n=0; !Null(arg_types); ) {
-    if (!LISTP(arg_types)) {
-      FEerror("In CALL-CFUN, types lists is not a proper list", 0);
-    }
-    if (n >= the_env->ffi_args_limit) {
-      resize_call_stack(the_env, n + 32);
-    }
+    ffi_type *ft;
     arg_type = ECL_CONS_CAR(arg_types);
     arg_types = ECL_CONS_CDR(arg_types);
-    type = ecl_foreign_type_code(arg_type);
-    the_env->ffi_types[++n] = ecl_type_to_libffi_type(arg_type);
+    ft = ecl_type_to_libffi_type(arg_type);
+    the_env->ffi_types[++n] = ft;
     if (CONSP(args)) {
       cl_object object = ECL_CONS_CAR(args);
-      if (type == ECL_FFI_CSTRING) {
-        object = ecl_null_terminated_base_string(object);
-        /* Push the newly allocated object onto the stack so that it
-         * is reachable by the garbage collector */
-        if (ECL_CONS_CAR(args) != object) {
-          ECL_STACK_PUSH(the_env, object);
-        }
-      }
       args = ECL_CONS_CDR(args);
-      ecl_foreign_data_set_elt(the_env->ffi_values + n, type, object);
+      if (ft->type == FFI_TYPE_STRUCT) {
+        /* By value, but from the memory the pointer names: libffi reads
+           the structure from there, so nothing is copied here. */
+        the_env->ffi_values_ptrs[n-1] = (union ecl_ffi_values *)
+          aggregate_pointer(object, arg_type, ft->size);
+      } else {
+        enum ecl_ffi_tag type = scalar_tag(arg_type);
+        if (type == ECL_FFI_CSTRING) {
+          cl_object original = object;
+          object = ecl_null_terminated_base_string(object);
+          /* Push the newly allocated object onto the stack so that it
+           * is reachable by the garbage collector */
+          if (original != object) {
+            ECL_STACK_PUSH(the_env, object);
+          }
+        }
+        ecl_foreign_data_set_elt(the_env->ffi_values + n, type, object);
+        the_env->ffi_values_ptrs[n-1] = the_env->ffi_values + n;
+      }
     }
   }
   if (output_copy) {
     cl_index bytes = (n + 1) * sizeof(ffi_type*);
-    *output_copy = types = (ffi_type**)ecl_alloc_atomic(bytes);
+    *output_copy = types = (ffi_type**)ecl_alloc(bytes);
     memcpy(types, the_env->ffi_types, bytes);
   } else {
     types = the_env->ffi_types;
@@ -927,6 +1109,8 @@ prepare_cif(cl_env_ptr the_env, ffi_cif *cif, cl_object return_type,
     if (ok == FFI_BAD_TYPEDEF) {
       FEerror("In CALL-CFUN, wrong or malformed argument types", 0);
     }
+    FEerror("In CALL-CFUN, libffi could not prepare the call (status ~D)", 1,
+            ecl_make_fixnum(ok));
   }
   return n;
 }
@@ -939,9 +1123,20 @@ prepare_cif(cl_env_ptr the_env, ffi_cif *cif, cl_object return_type,
 @ {
   sp = ECL_STACK_INDEX(the_env);
   prepare_cif(the_env, &cif, return_type, arg_types, args, cc_type, NULL);
-  ffi_call(&cif, cfun, the_env->ffi_values, (void **)the_env->ffi_values_ptrs);
-  object = ecl_foreign_data_ref_elt(the_env->ffi_values,
-                                    ecl_foreign_type_code(return_type));
+  if (cif.rtype->type == FFI_TYPE_STRUCT) {
+    /* A structure comes back into fresh foreign data tagged with its
+       type. The buffer is at least as large as libffi asks for -- it
+       may write a full register pair for a small structure -- while the
+       size the object reports is the structure's own. */
+    cl_index size = cif.rtype->size;
+    cl_index room = size < 2 * sizeof(ffi_arg) ? 2 * sizeof(ffi_arg) : size;
+    object = ecl_make_foreign_data(return_type, size, ecl_alloc_atomic(room));
+    ffi_call(&cif, cfun, object->foreign.data, (void **)the_env->ffi_values_ptrs);
+  } else {
+    ffi_call(&cif, cfun, the_env->ffi_values, (void **)the_env->ffi_values_ptrs);
+    object = ecl_foreign_data_ref_elt(the_env->ffi_values,
+                                      scalar_tag(return_type));
+  }
   ECL_STACK_UNWIND(the_env, sp);
   if (object != ECL_NIL) {
     @(return object);
@@ -969,17 +1164,30 @@ callback_executor(ffi_cif *cif, void *result, void **args, void *userdata)
   struct ecl_stack_frame frame_aux;
   const cl_object frame = ecl_stack_frame_open(the_env, (cl_object)&frame_aux, 0);
   cl_object x;
+  int i = 0;
   while (arg_types != ECL_NIL) {
     cl_object type = ECL_CONS_CAR(arg_types);
-    enum ecl_ffi_tag tag = ecl_foreign_type_code(type);
-    x = ecl_foreign_data_ref_elt(*args, tag);
+    ffi_type *ft = cif->arg_types[i];
+    if (ft->type == FFI_TYPE_STRUCT) {
+      /* Copied: the memory libffi hands over is its own, and gone once
+         this returns, whereas the object may outlive the call. */
+      x = ecl_allocate_foreign_data(type, ft->size);
+      memcpy(x->foreign.data, args[i], ft->size);
+    } else {
+      x = ecl_foreign_data_ref_elt(args[i], scalar_tag(type));
+    }
     ecl_stack_frame_push(frame, x);
     arg_types = ECL_CONS_CDR(arg_types);
-    args++;
+    i++;
   }
   x = ecl_apply_from_stack_frame(frame, fun);
   ecl_stack_frame_close(frame);
-  ecl_foreign_data_set_elt(result, ecl_foreign_type_code(ret_type), x);
+  if (cif->rtype->type == FFI_TYPE_STRUCT) {
+    memcpy(result, aggregate_pointer(x, ret_type, cif->rtype->size),
+           cif->rtype->size);
+  } else {
+    ecl_foreign_data_set_elt(result, scalar_tag(ret_type), x);
+  }
   /* After the result is written: X is a Lisp object, and this thread
    * is not somewhere to be reading one once it is released. */
   if (imported) ecl_release_current_thread();

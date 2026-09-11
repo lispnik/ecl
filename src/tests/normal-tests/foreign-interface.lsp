@@ -181,6 +181,191 @@ int foo () {
 ;;; Date: 2026-09-11 (Matthew Kennedy)
 ;;; Description:
 ;;;
+;;;     The dynamic FFI passes and returns structures by value. Before
+;;;     this, SI:CALL-CFUN accepted only the scalar tags, so a caller
+;;;     had to decompose a structure into the scalars it is made of and
+;;;     hope the ABI put them in the same registers -- which on AArch64
+;;;     is true for a homogeneous float aggregate and for two integers,
+;;;     and silently false for a long next to a double. libffi knows the
+;;;     rules; these hand it the layout and check it applies them.
+;;;
+;;;     The shapes are chosen for what AArch64 does with them: two and
+;;;     four doubles ride in vector registers both ways; two longs in
+;;;     x0/x1; a long beside a double splits across x0 and v0; 24 bytes
+;;;     of longs go by pointer and come back through x8; nesting and an
+;;;     array member must flatten to the same classification as the
+;;;     equivalent flat structure.
+#-ecl-bytecmp
+(test ffi.0008.dffi-structures-by-value
+  (with-open-file (s "ffi-0008-structs.lsp" :direction :output
+                                            :if-exists :supersede
+                                            :if-does-not-exist :create)
+    (mapc #'(lambda (form) (print form s))
+          '((in-package #:cl-test)
+            (ffi:clines "
+#include <math.h>
+typedef struct { double x, y; } pt;
+typedef struct { double x, y, w, h; } rect;
+typedef struct { long location, length; } range;
+typedef struct { long a; double b; } mixed;
+typedef struct { long a, b, c; } big;
+typedef struct { pt a, b; } line;
+typedef struct { signed char tag; int values[3]; } tagged;
+
+pt pt_scale(pt p, double k) { pt r = { p.x * k, p.y * k }; return r; }
+double rect_area(rect r) { return r.w * r.h; }
+rect rect_make(double x, double y, double w, double h) { rect r = { x, y, w, h }; return r; }
+long range_end(range r) { return r.location + r.length; }
+range range_make(long location, long length) { range r = { location, length }; return r; }
+double mixed_sum(mixed m) { return m.a + m.b; }
+mixed mixed_make(long a, double b) { mixed m = { a, b }; return m; }
+long big_sum(big b) { return b.a + b.b + b.c; }
+big big_make(long a, long b, long c) { big r = { a, b, c }; return r; }
+double line_length(line l) { double dx = l.b.x - l.a.x, dy = l.b.y - l.a.y; return sqrt(dx * dx + dy * dy); }
+int tagged_sum(tagged t) { return t.tag + t.values[0] + t.values[1] + t.values[2]; }
+pt apply_pt(pt (*f)(pt), pt p) { return f(p); }
+mixed apply_mixed(mixed (*f)(mixed, long), mixed m, long k) { return f(m, k); }
+")
+            (ffi:def-struct ffi-0008-pt (x :double) (y :double))
+            (ffi:def-struct ffi-0008-rect (x :double) (y :double) (w :double) (h :double))
+            (ffi:def-struct ffi-0008-range (location :long) (length :long))
+            (ffi:def-struct ffi-0008-mixed (a :long) (b :double))
+            (ffi:def-struct ffi-0008-big (a :long) (b :long) (c :long))
+            (ffi:def-struct ffi-0008-line (a ffi-0008-pt) (b ffi-0008-pt))
+            (ffi:def-struct ffi-0008-tagged (tag :byte) (values (:array :int 3)))
+            ;; SI:CALL-CFUN reads designators in C and cannot resolve a
+            ;; name, so it is handed the (:STRUCT ...) list the name stands for.
+            (defun ffi-0008-type (name) (ffi::%convert-to-ffi-type name))
+            (defmacro ffi-0008-address (c-name)
+              `(ffi:c-inline () () :pointer-void ,(format nil "(void*)&~a" c-name)
+                             :one-liner t))
+            (defun ffi-0008-make (type &rest slots)
+              (let ((object (ffi:allocate-foreign-object type)))
+                (loop for (slot value) on slots by #'cddr
+                      do (setf (ffi:get-slot-value object type slot) value))
+                object))
+            (defun ffi-0008-slot (object type slot)
+              (ffi:get-slot-value object type slot))
+            (defun ffi-0008-call (c-name return-type arg-types &rest args)
+              (si::call-cfun (ffi-0008-address-of c-name)
+                             (ffi-0008-type return-type)
+                             (mapcar #'ffi-0008-type arg-types)
+                             args))
+            (defun ffi-0008-address-of (c-name)
+              (cond ((string= c-name "pt_scale") (ffi-0008-address "pt_scale"))
+                    ((string= c-name "rect_area") (ffi-0008-address "rect_area"))
+                    ((string= c-name "rect_make") (ffi-0008-address "rect_make"))
+                    ((string= c-name "range_end") (ffi-0008-address "range_end"))
+                    ((string= c-name "range_make") (ffi-0008-address "range_make"))
+                    ((string= c-name "mixed_sum") (ffi-0008-address "mixed_sum"))
+                    ((string= c-name "mixed_make") (ffi-0008-address "mixed_make"))
+                    ((string= c-name "big_sum") (ffi-0008-address "big_sum"))
+                    ((string= c-name "big_make") (ffi-0008-address "big_make"))
+                    ((string= c-name "line_length") (ffi-0008-address "line_length"))
+                    ((string= c-name "tagged_sum") (ffi-0008-address "tagged_sum"))
+                    ((string= c-name "apply_pt") (ffi-0008-address "apply_pt"))
+                    ((string= c-name "apply_mixed") (ffi-0008-address "apply_mixed"))
+                    (t (error "no such helper ~a" c-name))))
+            ;; Callbacks through the dynamic path, so libffi closures whose
+            ;; arguments and results are structures. Under EVAL because the
+            ;; compiler turns a DEFCALLBACK it sees into a static C function,
+            ;; and that path takes elementary types only.
+            (eval '(ffi:defcallback ffi-0008-flip ffi-0008-pt ((p ffi-0008-pt))
+                    (ffi-0008-make 'ffi-0008-pt
+                                   'x (ffi-0008-slot p 'ffi-0008-pt 'y)
+                                   'y (ffi-0008-slot p 'ffi-0008-pt 'x))))
+            (eval '(ffi:defcallback ffi-0008-stretch ffi-0008-mixed ((m ffi-0008-mixed) (k :long))
+                    (ffi-0008-make 'ffi-0008-mixed
+                                   'a (+ (ffi-0008-slot m 'ffi-0008-mixed 'a) k)
+                                   'b (* (ffi-0008-slot m 'ffi-0008-mixed 'b) k)))))))
+  (is (not (null (compile-file "ffi-0008-structs.lsp" :load t))))
+  (flet ((make (type &rest slots) (apply #'ffi-0008-make type slots))
+         (slot (object type slot) (ffi-0008-slot object type slot))
+         (call (c-name return-type arg-types &rest args)
+           (apply #'ffi-0008-call c-name return-type arg-types args)))
+    ;; two doubles: v0, v1 in and out
+    (let ((r (call "pt_scale" 'ffi-0008-pt '(ffi-0008-pt :double)
+                   (make 'ffi-0008-pt 'x 1.5d0 'y -2d0) 4d0)))
+      (is (= 6d0 (slot r 'ffi-0008-pt 'x)))
+      (is (= -8d0 (slot r 'ffi-0008-pt 'y))))
+    ;; four doubles: still a homogeneous aggregate, v0-v3 both ways
+    (is (= 12d0 (call "rect_area" :double '(ffi-0008-rect)
+                      (make 'ffi-0008-rect 'x 0d0 'y 0d0 'w 3d0 'h 4d0))))
+    (let ((r (call "rect_make" 'ffi-0008-rect '(:double :double :double :double)
+                   1d0 2d0 3d0 4d0)))
+      (is (= 1d0 (slot r 'ffi-0008-rect 'x)))
+      (is (= 4d0 (slot r 'ffi-0008-rect 'h))))
+    ;; two longs: x0, x1
+    (is (= 11 (call "range_end" :long '(ffi-0008-range)
+                    (make 'ffi-0008-range 'location 6 'length 5))))
+    (let ((r (call "range_make" 'ffi-0008-range '(:long :long) 6 5)))
+      (is (= 6 (slot r 'ffi-0008-range 'location)))
+      (is (= 5 (slot r 'ffi-0008-range 'length))))
+    ;; a long and a double: x0 and v0. The shape a scalar decomposition
+    ;; gets wrong, because it would put the double in x1.
+    (is (= 44.5d0 (call "mixed_sum" :double '(ffi-0008-mixed)
+                        (make 'ffi-0008-mixed 'a 42 'b 2.5d0))))
+    (let ((r (call "mixed_make" 'ffi-0008-mixed '(:long :double) 7 0.25d0)))
+      (is (= 7 (slot r 'ffi-0008-mixed 'a)))
+      (is (= 0.25d0 (slot r 'ffi-0008-mixed 'b))))
+    ;; 24 bytes of integers: passed by pointer, returned through x8
+    (is (= 60 (call "big_sum" :long '(ffi-0008-big)
+                    (make 'ffi-0008-big 'a 10 'b 20 'c 30))))
+    (let ((r (call "big_make" 'ffi-0008-big '(:long :long :long) 1 2 3)))
+      (is (= 1 (slot r 'ffi-0008-big 'a)))
+      (is (= 2 (slot r 'ffi-0008-big 'b)))
+      (is (= 3 (slot r 'ffi-0008-big 'c))))
+    ;; nested: a pair of pairs of doubles is an aggregate of four
+    (let ((l (ffi:allocate-foreign-object 'ffi-0008-line)))
+      (setf (ffi:get-slot-value (ffi:get-slot-pointer l 'ffi-0008-line 'a) 'ffi-0008-pt 'x) 0d0
+            (ffi:get-slot-value (ffi:get-slot-pointer l 'ffi-0008-line 'a) 'ffi-0008-pt 'y) 0d0
+            (ffi:get-slot-value (ffi:get-slot-pointer l 'ffi-0008-line 'b) 'ffi-0008-pt 'x) 3d0
+            (ffi:get-slot-value (ffi:get-slot-pointer l 'ffi-0008-line 'b) 'ffi-0008-pt 'y) 4d0)
+      (is (= 5d0 (call "line_length" :double '(ffi-0008-line) l))))
+    ;; an array member contributes its elements, and the padding after a
+    ;; one-byte tag is libffi's to work out
+    (let ((v (ffi:allocate-foreign-object 'ffi-0008-tagged)))
+      (setf (ffi:get-slot-value v 'ffi-0008-tagged 'tag) 1)
+      (let ((values (ffi:get-slot-pointer v 'ffi-0008-tagged 'values)))
+        (setf (ffi:deref-array values '(:array :int 3) 0) 10
+              (ffi:deref-array values '(:array :int 3) 1) 20
+              (ffi:deref-array values '(:array :int 3) 2) 30))
+      (is (= 61 (call "tagged_sum" :int '(ffi-0008-tagged) v))))
+    ;; callbacks: a structure in, a structure out, through a libffi closure
+    (let ((r (call "apply_pt" 'ffi-0008-pt '(:pointer-void ffi-0008-pt)
+                   (ffi:callback 'ffi-0008-flip)
+                   (make 'ffi-0008-pt 'x 1d0 'y 2d0))))
+      (is (= 2d0 (slot r 'ffi-0008-pt 'x)))
+      (is (= 1d0 (slot r 'ffi-0008-pt 'y))))
+    (let ((r (call "apply_mixed" 'ffi-0008-mixed '(:pointer-void ffi-0008-mixed :long)
+                   (ffi:callback 'ffi-0008-stretch)
+                   (make 'ffi-0008-mixed 'a 40 'b 1.5d0) 2)))
+      (is (= 42 (slot r 'ffi-0008-mixed 'a)))
+      (is (= 3d0 (slot r 'ffi-0008-mixed 'b))))
+    ;; the result is foreign data that reports the structure's size,
+    ;; tagged with the type it was returned as
+    (let ((r (call "range_make" 'ffi-0008-range '(:long :long) 1 2)))
+      (is (equal (ffi-0008-type 'ffi-0008-range) (si::foreign-data-tag r))))))
+
+;;; What the dynamic FFI refuses, and that it refuses rather than guesses.
+#-ecl-bytecmp
+(test ffi.0009.dffi-structures-refused
+  (let ((pt (ffi::%convert-to-ffi-type 'ffi-0008-pt))
+        (fn (ffi-0008-address-of "pt_scale")))
+    ;; not foreign data at all
+    (signals error (si::call-cfun fn pt (list pt :double) (list 42 1d0)))
+    ;; foreign data, but too small to be one of these
+    (signals error (si::call-cfun fn pt (list pt :double)
+                                  (list (ffi:allocate-foreign-object :int) 1d0)))
+    ;; a union has no libffi description that is right for every ABI
+    (signals error (si::call-cfun fn :void '((:union (a :long) (b :double)))
+                                  (list (ffi:allocate-foreign-object 'ffi-0008-pt))))
+    ;; an empty structure has no representation
+    (signals error (si::call-cfun fn :void '((:struct)) (list (ffi:allocate-foreign-object 'ffi-0008-pt))))
+    ;; and the Lisp side resolves names but leaves the decision to C
+    (is (equal pt (ffi::%convert-to-dffi-arg-type 'ffi-0008-pt)))
+    (is (eq :pointer-void (ffi::%convert-to-dffi-arg-type '(* ffi-0008-pt))))
+    (is (eq :pointer-void (ffi::%convert-to-dffi-arg-type '(:array :int 3))))))
 ;;;     A dynamic callback is called on whatever thread the foreign code
 ;;;     likes. One ECL did not create has no environment, and asking for
 ;;;     it was a fatal internal error, so the executor now imports the

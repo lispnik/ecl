@@ -584,6 +584,17 @@ bound to this value during the execution of body."
           ((eq (first type) '*) (second type))
           (t type))))
 
+(defun %convert-to-dffi-arg-type (type)
+  "The argument type as the dynamic FFI wants it: names resolved, pointers
+and arrays as :POINTER-VOID, and a structure left as the (:STRUCT ...) list
+that SI::CALL-CFUN reads to pass it by value. What the C side cannot pass
+-- a union, say -- it refuses itself, with the reason."
+  (let ((type (%convert-to-ffi-type type)))
+    (cond ((atom type) type)
+          ((member (first type) '(* :array)) :pointer-void)
+          ((member (first type) '(:struct :union)) type)
+          (t (error "Unsupported argument type: ~A" type)))))
+
 (defun produce-function-call (c-name nargs)
   (declare (si::c-local))
   (format nil "~a(~a)" c-name
@@ -595,7 +606,7 @@ bound to this value during the execution of body."
 (defmacro def-lib-function (name args &key returning module (call :default))
   (multiple-value-bind (c-name lisp-name) (lisp-to-c-name name)
     (let* ((return-type (ffi::%convert-to-return-type returning))
-           (argtypes (mapcar #'(lambda (a) (ffi::%convert-to-arg-type (second a))) args)))
+           (argtypes (mapcar #'(lambda (a) (ffi::%convert-to-dffi-arg-type (second a))) args)))
       `(let ((c-fun (si::find-foreign-symbol ',c-name ,module :pointer-void 0)))
         (defun ,lisp-name ,(mapcar #'first args)
           (si::call-cfun c-fun ',return-type ',argtypes (list ,@(mapcar #'first args)) ,call))))))
@@ -754,12 +765,17 @@ Loads a foreign library."
       (multiple-value-bind (name call-type) (if (consp name)
                                                 (values-list name)
                                                 (values name :default))
-        (let ((arg-types (mapcar #'second arg-desc))
+        ;; Resolved here, at macroexpansion, because SI::MAKE-DYNAMIC-CALLBACK
+        ;; reads the designators in C and cannot look a name up in
+        ;; *FFI-TYPES*. A structure resolves to its (:STRUCT ...) list and
+        ;; is then passed and returned by value.
+        (let ((arg-types (mapcar #'(lambda (d) (%convert-to-dffi-arg-type (second d)))
+                                 arg-desc))
               (arg-names (mapcar #'first arg-desc))
               (ret-type (typecase ret-type
-                          ((member nil :void)      :void)
-                          ((cons (member * array)) :pointer-void)
-                          (otherwise               ret-type))))
+                          ((member nil :void)             :void)
+                          ((cons (member * array :array)) :pointer-void)
+                          (otherwise (%convert-to-ffi-type ret-type)))))
           `(si::make-dynamic-callback
             #'(ext::lambda-block ,name ,arg-names ,@body)
             ',name ',ret-type ',arg-types ,call-type)))
