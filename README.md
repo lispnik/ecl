@@ -50,8 +50,19 @@ https://github.com/lispnik/asdf-ios-app, which build this fork's `develop`
   integers and silently wrong for a long beside a double. Unions are
   refused rather than imitated.
 
-Each is intended for upstream; when one lands there, its branch is
-deleted here and the next merge from upstream carries nothing for it.
+`ios-build` -- build.sh, src/util/iOS-arm64.cross_config, ios-hello/
+
+  How ECL is built for iOS: a host ECL from this tree, and then arm64 cross
+  builds for the device and the simulator, with the cross-config and
+  platform flags that were not written down anywhere. Plus a hello-world
+  app embedding the result. Not for upstream as it stands -- it is one
+  machine's recipe -- but it is what https://github.com/lispnik/asdf-ios-app
+  does more generally, and the place to look for how a cross build is
+  configured.
+
+Each of the fixes is intended for upstream; when one lands there, its
+branch is deleted here and the next merge from upstream carries nothing
+for it.
 
 Some of the changes here were written with the help of an LLM (Claude,
 via Claude Code). The commits say so in their trailers. Every one was
