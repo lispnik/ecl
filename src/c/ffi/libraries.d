@@ -368,7 +368,7 @@ ecl_library_symbol(cl_object block, const char *symbol, bool lock) {
     }
 #endif
 #ifdef HAVE_DLFCN_H
-    p = dlsym(0, symbol);
+    p = dlsym(RTLD_DEFAULT, symbol);
 #endif
 #if !defined(ECL_MS_WINDOWS_HOST) && !defined(HAVE_DLFCN_H)
     p = 0;
