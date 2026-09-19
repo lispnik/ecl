@@ -1130,10 +1130,6 @@ gather_statistics()
 
 static void
 update_bytes_consed () {
-#if GBC_BOEHM == 0
-  _ecl_big_add_ui(ecl_core.bytes_consed, ecl_core.bytes_consed,
-                  GC_get_bytes_since_gc());
-#else
   /* This is not accurate and may wrap around. We try to detect this
      assuming that an overflow in an unsigned integer will produce
      a smaller integer.*/
@@ -1154,7 +1150,6 @@ update_bytes_consed () {
                     new_bytes - bytes);
   }
   bytes = new_bytes;
-#endif
 }
 
 /**********************************************************
