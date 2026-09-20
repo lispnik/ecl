@@ -719,3 +719,12 @@
           (is (eql :one  (read-from-string "?a")))
           (is (eql :tri  (read-from-string "?b")))
           (signals error (read-from-string "?c")))))))
+
+;;; Reported by: Mit Unya
+;;; Created: 2026-09-17
+;;; Description
+;;;
+;;;     After "." is encountered we start parsing a float, but the parser
+;;;     does not enforce strict float parsing.
+(deftest mix.0037.reader.parse-number ()
+  (is (typep (read-from-string "1.0/2") 'symbol)))
