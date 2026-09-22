@@ -412,10 +412,10 @@ The top-level loop of ECL. It is called by default when ECL is invoked."
                     (lisp-implementation-version)
                     (ext:lisp-implementation-vcs-id))
         (tpl-format "~%Copyright (C) 1984 Taiichi Yuasa and Masami Hagiya~@
-Copyright (C) 1993 Giuseppe Attardi~@
-Copyright (C) 2013 Juan J. Garcia-Ripoll~@
-Copyright (C) 2018 Daniel Kochmanski~@
-Copyright (C) 2024 Daniel Kochmanski and Marius Gerbershagen~@
+Copyright (C) 1990-1993 Giuseppe Attardi~@
+Copyright (C) 2000-2013 Juan J. Garcia-Ripoll~@
+Copyright (C) 2015-2018 Daniel Kochmanski~@
+Copyright (C) 2019-2026 Daniel Kochmanski and Marius Gerbershagen~@
 ECL is free software, and you are welcome to redistribute it~@
 under certain conditions; see file 'Copyright' for details.~%")
         (tpl-format "~&Type :h for Help."))
