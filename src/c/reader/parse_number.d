@@ -141,6 +141,8 @@ ecl_parse_number(cl_object str, cl_index start, cl_index end,
     c = ecl_char(str, i);
     if (c == '/') {
       cl_object den;
+      if (decimal < end)
+        goto NOT_A_NUMBER;
       if (sign < 0) _ecl_big_neg(num, num);
       num = _ecl_big_register_normalize(num);
       c = ecl_char(str, ++i);
