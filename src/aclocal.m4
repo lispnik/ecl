@@ -549,7 +549,7 @@ case "${host}" in
                 # The default stack size is 64KB, that's too little
                 # for ECL. The spill-pointers pass is needed for the
                 # gc to find pointers on the stack.
-                LDFLAGS="${LDFLAGS} -sSTACK_SIZE=1048576 -sBINARYEN_EXTRA_PASSES=--spill-pointers"
+                LDFLAGS="${LDFLAGS} -sSTACK_SIZE=1048576 --profiling-funcs -sBINARYEN_EXTRA_PASSES='--spill-pointers,--strip-debug'"
                 ECL_MIN="ecl_min.html"
                 EXEEXT=".html"
                 enable_threads='no'

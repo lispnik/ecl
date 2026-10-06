@@ -250,7 +250,7 @@ file_kind(ecl_filename_char *filename, bool follow_links) {
   else
     output = @':file';
   ecl_enable_interrupts();
-#elif defined(EMSCRIPTEN) && defined(HAVE_DIRENT_H)
+#elif defined(__EMSCRIPTEN__) && defined(HAVE_DIRENT_H)
   /* We don't want to call stat unless we have to on emscripten
    * because getting the size of a file may involve a network call for
    * lazy loading files. Since we don't care about the size but only
