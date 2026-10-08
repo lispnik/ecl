@@ -930,16 +930,22 @@ cl_rational(cl_object x)
   @(return x);
 }
 
+#define FIXNUM_LIMIT_L ldexpl(1.0, ECL_FIXNUM_BITS-ECL_TAG_BITS-1)
+#define FIXNUM_LIMIT_D ldexp (1.0, ECL_FIXNUM_BITS-ECL_TAG_BITS-1)
+#define FIXNUM_LIMIT_F ldexpf(1.0, ECL_FIXNUM_BITS-ECL_TAG_BITS-1)
+
 cl_object
 _ecl_long_double_to_integer(long double d0)
 {
   const int fb = ECL_FIXNUM_BITS - 3;
   int e;
-  long double d = frexpl(d0, &e);
-  if (e <= fb) {
+  long double d;
+  if (d0 < FIXNUM_LIMIT_L && d0 >= -FIXNUM_LIMIT_L) {
     return ecl_make_fixnum((cl_fixnum)d0);
-  } else if (e > LDBL_MANT_DIG) {
-    return ecl_ash(_ecl_long_double_to_integer(ldexp(d, LDBL_MANT_DIG)),
+  }
+  d = frexpl(d0, &e);
+  if (e > LDBL_MANT_DIG) {
+    return ecl_ash(_ecl_long_double_to_integer(ldexpl(d, LDBL_MANT_DIG)),
                    e - LDBL_MANT_DIG);
   } else {
     long double d1 = floorl(d = ldexpl(d, fb));
@@ -954,9 +960,9 @@ _ecl_long_double_to_integer(long double d0)
 cl_object
 _ecl_double_to_integer(double d)
 {
-  if (d <= MOST_POSITIVE_FIXNUM && d >= MOST_NEGATIVE_FIXNUM)
+  if (d < FIXNUM_LIMIT_D && d >= -FIXNUM_LIMIT_D) {
     return ecl_make_fixnum((cl_fixnum)d);
-  else {
+  } else {
     cl_object z = _ecl_big_register0();
     _ecl_big_set_d(z, d);
     return _ecl_big_register_copy(z);
@@ -966,9 +972,9 @@ _ecl_double_to_integer(double d)
 cl_object
 _ecl_float_to_integer(float d)
 {
-  if (d <= MOST_POSITIVE_FIXNUM && d >= MOST_NEGATIVE_FIXNUM)
+  if (d < FIXNUM_LIMIT_F && d >= -FIXNUM_LIMIT_F) {
     return ecl_make_fixnum((cl_fixnum)d);
-  else {
+  } else {
     cl_object z = _ecl_big_register0();
     _ecl_big_set_d(z, d);
     return _ecl_big_register_copy(z);
