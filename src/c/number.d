@@ -930,24 +930,44 @@ cl_rational(cl_object x)
   @(return x);
 }
 
-#define FIXNUM_LIMIT_L ldexpl(1.0, ECL_FIXNUM_BITS-ECL_TAG_BITS-1)
-#define FIXNUM_LIMIT_D ldexp (1.0, ECL_FIXNUM_BITS-ECL_TAG_BITS-1)
-#define FIXNUM_LIMIT_F ldexpf(1.0, ECL_FIXNUM_BITS-ECL_TAG_BITS-1)
+#define FIXNUM_LIMIT_L (ldexpl(1.0, ECL_FIXNUM_BITS-ECL_TAG_BITS-1))
+#define FIXNUM_LIMIT_D (ldexp (1.0, ECL_FIXNUM_BITS-ECL_TAG_BITS-1))
+#define FIXNUM_LIMIT_F (ldexpf(1.0, ECL_FIXNUM_BITS-ECL_TAG_BITS-1))
+
+/* Validate input to avoid a situation when we are handled infinities and NaNs.
+   IEEE catches only invalid ops and does not guard against existing values.
+
+   _ecl_long_double_to_integer entered infinite loop
+   _ecl_double_to_integer      constructed garbage via _ecl_big_set_d
+   _ecl_float_to_integer       constructed garbage via _ecl_big_set_d
+
+   From now on these functions signal arithmetic error. */
+
+#define DO_ENSURE_FINITE_FLOAT(f) do {                                 \
+  unlikely_if (!isfinite(f)) {                                         \
+    int _status = isnan(f) ? FE_INVALID : FE_OVERFLOW;                 \
+    ecl_deliver_fpe(_status);                                          \
+    /* If we end up here, then traps are masked. We still bark. */     \
+    cl_error(1, _status==FE_INVALID                                    \
+             ? @'floating-point-invalid-operation'                     \
+             : @'floating-point-overflow');                            \
+  }} while (0)
 
 cl_object
 _ecl_long_double_to_integer(long double d0)
 {
-  const int fb = ECL_FIXNUM_BITS - 3;
   int e;
   long double d;
+  DO_ENSURE_FINITE_FLOAT(d0);
   if (d0 < FIXNUM_LIMIT_L && d0 >= -FIXNUM_LIMIT_L) {
     return ecl_make_fixnum((cl_fixnum)d0);
   }
   d = frexpl(d0, &e);
   if (e > LDBL_MANT_DIG) {
-    return ecl_ash(_ecl_long_double_to_integer(ldexpl(d, LDBL_MANT_DIG)),
-                   e - LDBL_MANT_DIG);
+    long double d1 = ldexpl(d, LDBL_MANT_DIG);
+    return ecl_ash(_ecl_long_double_to_integer(d1), e - LDBL_MANT_DIG);
   } else {
+    const int fb = ECL_FIXNUM_BITS-ECL_TAG_BITS-1;
     long double d1 = floorl(d = ldexpl(d, fb));
     int newe = e - fb;
     cl_object o = ecl_ash(_ecl_long_double_to_integer(d1), newe);
@@ -960,6 +980,7 @@ _ecl_long_double_to_integer(long double d0)
 cl_object
 _ecl_double_to_integer(double d)
 {
+  DO_ENSURE_FINITE_FLOAT(d);
   if (d < FIXNUM_LIMIT_D && d >= -FIXNUM_LIMIT_D) {
     return ecl_make_fixnum((cl_fixnum)d);
   } else {
@@ -972,6 +993,7 @@ _ecl_double_to_integer(double d)
 cl_object
 _ecl_float_to_integer(float d)
 {
+  DO_ENSURE_FINITE_FLOAT(d);
   if (d < FIXNUM_LIMIT_F && d >= -FIXNUM_LIMIT_F) {
     return ecl_make_fixnum((cl_fixnum)d);
   } else {
