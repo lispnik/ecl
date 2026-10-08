@@ -64,6 +64,12 @@
 - bugfix: defclass does not redefine existing classes at compile time with
   forward-referenced classes (#843)
 
+- bugfix: _ecl_*_to_integer signals a condition when passed nan or infinity
+  instead of producing garbage integer
+
+- bugfix: _ecl_*_to_integer correctly recognize float/fixnum limits fixing
+  error caused by incorrect rounding of doubles near MOST-POSITIVE-FIXNUM
+
 * 26.3.27 changes since 24.5.10
 
 - Vendored libffi has been updated to the version 3.5.2
