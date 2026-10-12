@@ -15,7 +15,7 @@
 (defmacro defgeneric (&whole whole &rest args)
   (multiple-value-bind (function-specifier lambda-list options)
       (parse-defgeneric args)
-    (parse-lambda-list lambda-list)
+    (parse-lambda-list (validate-lambda-list lambda-list))
     ;; process options
     (multiple-value-bind (option-list method-list)
         (parse-generic-options options lambda-list)
@@ -82,6 +82,19 @@
     (values `(:lambda-list ',lambda-list ,@arg-list
               ,@(when declarations `(:declarations ',declarations)))
             method-list)))
+
+(defun validate-lambda-list (lambda-list)
+  (let ((invalid-arg (find-if #'constantp lambda-list))) ;; contain a constant?
+    (when invalid-arg
+      (simple-program-error "cannot use the constant name, ~S within the lambda list"
+                            invalid-arg)))
+  (let ((seen '())) ;; duplicate check
+    (dolist (arg lambda-list)
+      (when (member arg seen :test #'eq)
+        (simple-program-error "cannot use the same name, ~S within the lambda list"
+                              arg))
+      (push arg seen)))
+  lambda-list)
 
 (defun parse-lambda-list (lambda-list &optional post-keyword)
   (declare (si::c-local))
