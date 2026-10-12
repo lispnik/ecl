@@ -86,14 +86,17 @@
 (defun validate-lambda-list (lambda-list)
   (let ((invalid-arg (find-if #'constantp lambda-list))) ;; contain a constant?
     (when invalid-arg
-      (simple-program-error "cannot use the constant name, ~S within the lambda list"
+      (simple-program-error "~
+DEFGENERIC: Cannot use the constant name, ~S within the lambda list."
                             invalid-arg)))
-  (let ((seen '())) ;; duplicate check
-    (dolist (arg lambda-list)
-      (when (member arg seen :test #'eq)
-        (simple-program-error "cannot use the same name, ~S within the lambda list"
-                              arg))
-      (push arg seen)))
+  ;; duplicate check
+  (do* ((args lambda-list (cdr args))
+        (arg (car args) (car args)))
+       ((null args))
+    (when (member arg (rest args) :test #'eq)
+      (simple-program-error "~
+DEFGENERIC: The variable ~s occurs more than once in the lambda list."
+                            arg)))
   lambda-list)
 
 (defun parse-lambda-list (lambda-list &optional post-keyword)
