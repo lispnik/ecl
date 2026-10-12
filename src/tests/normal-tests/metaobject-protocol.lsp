@@ -868,3 +868,12 @@ the metaclass")
     (signals error (foo))
     (defmethod foo () 33)
     (is (= (foo) 33))))
+
+;;; Fixed: #397
+;;; Description
+;;;     Constants should not appear in a lambda-list.
+;;;     Duplicate names should not appear in a lambda-list.
+(ext:with-clean-symbols (foo bar)
+  (deftest mop.0035 ()
+    (signals error (eval '(defgeneric foo (t t t))))
+    (signals error (eval '(defgeneric bar (baz baz baz))))))
