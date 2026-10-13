@@ -1,82 +1,163 @@
 @node Mailboxes
-@subsubsection Mailboxes
-/* threads/mailbox.d */
+@subsection Mailboxes
 
-@lspindex mp:make_mailbox
-@lspindex mp_make_mailbox
-@defun mp:make_mailbox
-@table @var
-@item returns
-???
-@item C/C++ signature
-cl_object mp_make_mailbox _ECL_ARGS((cl_narg, ...));
-@end table
+@cindex Mailboxes (synchronization)
+
+Mailboxes implement a fixed size FIFO queue for passing messages
+between threads without explicit locks managed by the user. A mailbox
+queue length doesn't change during its lifetime. A message can be any
+lisp object.
+
+Messages are read in the same order in which they were sent. When the
+queue is full, the sender blocks until a reader consumes a message,
+and when the queue is empty, then the reader blocks until a sender
+provides one. See @coderef{mp:mailbox-send},
+@coderef{mp:mailbox-read}.
+
+These operations have non-blocking counterparts that return @code{nil}
+immediately instead of blocking in the situations described above.
+See @coderef{mp:mailbox-try-send}, @coderef{mp:mailbox-try-read}.
+
+@strong{Note:} The mailbox functions are not interrupt safe.
+
+
+@node Mailboxes dictionary
+@subsection Mailboxes dictionary
+
+@cppdef ecl_make_mailbox
+@deftypefun cl_object ecl_make_mailbox (cl_object name, cl_fixnum count)
+@end deftypefun
+
+
+@cppdef mp_make_mailbox
+@lspdef mp:make-mailbox
+
+@deftypefun cl_object mp_make_mailbox (cl_narg narg, ...)
+@end deftypefun
+
+@defun mp:make-mailbox &key name count
+Creates a mailbox with @var{name} and the queue's capacity of
+@var{count} messages. @var{count} defaults to 128.
 @end defun
 
-@lspindex mp:mailbox_name
-@lspindex mp_mailbox_name
-@defun mp:mailbox_name
-@table @var
-@item returns
-???
-@item C/C++ signature
-cl_object mp_mailbox_name(cl_object mailbox);
-@end table
+
+@cppdef mp_mailbox_name
+@lspdef mp:mailbox-name
+
+@deftypefun cl_object mp_mailbox_name (cl_object mailbox)
+@end deftypefun
+
+@defun mp:mailbox-name mailbox
+Returns @var{mailbox} name.
 @end defun
 
-@lspindex mp:mailbox_count
-@lspindex mp_mailbox_count
-@defun mp:mailbox_count
-@table @var
-@item returns
-???
-@item C/C++ signature
-cl_object mp_mailbox_count(cl_object mailbox);
-@end table
+
+@cppdef mp_mailbox_count
+@lspdef mp:mailbox-count
+
+@deftypefun cl_object mp_mailbox_count (cl_object mailbox)
+@end deftypefun
+
+@defun mp:mailbox-count mailbox
+Returns the maximum number of messages @var{mailbox} can queue without
+blocking a sender.
+
+This value is fixed when the mailbox is created and does not reflect
+the number of messages currently queued.
 @end defun
 
-@lspindex mp:mailbox_empty_p
-@lspindex mp_mailbox_empty_p
-@defun mp:mailbox_empty_p
-@table @var
-@item returns
-???
-@item C/C++ signature
-cl_object mp_mailbox_empty_p(cl_object);
-@end table
+
+@cppdef mp_mailbox_empty_p
+@lspdef mp:mailbox-empty-p
+
+@deftypefun cl_object mp_mailbox_empty_p (cl_object mailbox)
+@end deftypefun
+
+@defun mp:mailbox-empty-p mailbox
+Returns @code{t} if @var{mailbox} has zero queued messages. Otherwise
+returns @code{nil}.
+
+Do not use this function to decide whether a
+subsequent @coderef{mp:mailbox-read} will block. Use
+@coderef{mp:mailbox-try-read} instead.
 @end defun
 
-@lspindex mp:mailbox_read
-@lspindex mp_mailbox_read
-@defun mp:mailbox_read
-@table @var
-@item returns
-???
-@item C/C++ signature
-cl_object mp_mailbox_read(cl_object mailbox);
-@end table
+
+@cppdef ecl_mailbox_read
+@lspdef mp:mailbox-read
+
+@deftypefun cl_object mp_mailbox_read (cl_narg narg, cl_object mailbox, ...)
+@end deftypefun
+
+@defun mp:mailbox-read mailbox &key timeout
+Returns two values. The first is a message from @var{mailbox}, or
+@code{nil} if @var{timeout} expired. The second is @code{t} if a
+message was actually read and @code{nil} if @var{timeout} expired.
+Check the second value to distinguish a valid @code{nil} message from
+an expired timeout.
+
+Advances the queue. The message returned is the oldest one still
+queued.
+
+If @var{mailbox} is empty, blocks until a message arrives or
+@var{timeout} expires. @var{timeout} is the maximum number of seconds
+to wait; when it is @code{nil} (the default) the caller blocks
+indefinitely.
+
+See @coderef{mp:mailbox-try-read} for a variant which never blocks.
 @end defun
 
-@lspindex mp:mailbox_try_read
-@lspindex mp_mailbox_try_read
-@defun mp:mailbox_try_read
-@table @var
-@item returns
-???
-@item C/C++ signature
-cl_object mp_mailbox_try_read(cl_object mailbox);
-@end table
+
+@cppdef mp_mailbox_try_read
+@lspdef mp:mailbox-try-read
+
+@deftypefun cl_object mp_mailbox_try_read (cl_object mailbox)
+@end deftypefun
+
+@defun mp:mailbox-try-read mailbox
+Returns two values immediately. The first return value is a message
+from @var{mailbox} or @code{nil}, if the mailbox is empty. The second
+value is @code{t} if the message was actually read, and @code{nil} if
+the mailbox is empty. Check the second value to distinguish a valid
+@code{nil} message from an empty mailbox situation.
+
+Advances the message queue.
+
+This is the non-blocking variant of @coderef{mp:mailbox-read}.
 @end defun
 
-@lspindex mp:mailbox_send
-@lspindex mp_mailbox_send
-@defun mp:mailbox_send
-@table @var
-@item returns
-???
-@item C/C++ signature
-cl_object mp_mailbox_send(cl_object mailbox, cl_object msg);
-@end table
+
+@cppdef mp_mailbox_send
+@lspdef mp:mailbox-send
+
+@deftypefun cl_object mp_mailbox_send (cl_object mailbox, cl_object msg)
+@end deftypefun
+
+@defun mp:mailbox-send mailbox message
+Sends @var{message} to @var{mailbox}. Returns @code{t} if the message
+was queued and @code{nil} if @var{timeout} expired.
+
+The message is appended at the end of the queue.
+
+If @var{mailbox} has a number of queued messages equal to its
+@coderef{mp:mailbox-count}, blocks until another thread reads a
+message or @var{timeout} expires.
+
+See @coderef{mp:mailbox-try-send} for a variant which never blocks.
 @end defun
 
-cl_object mp_mailbox_try_send(cl_object mailbox, cl_object msg);
+
+@cppdef mp_mailbox_try_send
+@lspdef mp:mailbox-try-send
+
+@deftypefun cl_object mp_mailbox_try_send (cl_object mailbox, cl_object msg)
+@end deftypefun
+
+@defun mp:mailbox-try-send mailbox message
+Sends @var{message} to @var{mailbox}. Returns @code{nil} immediately if
+@var{mailbox} has a number of queued messages equal to its
+@coderef{mp:mailbox-count}, otherwise returns @code{t}.
+
+This is the non-blocking variant of @coderef{mp:mailbox-send}.
+@end defun
+
