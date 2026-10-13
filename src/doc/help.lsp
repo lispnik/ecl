@@ -3381,13 +3381,30 @@ NIL, otherwise returns resource count before semaphore was acquired.")
 Releases COUNT units of a resource on SEMAPHORE.")
 
   ;; Mailboxes
-  (docfun mp:make-mailbox function (&key name (count 128)) "")
-  (docfun mp:mailbox-name function (mailbox) "")
-  (docfun mp:mailbox-empty-p function (mailbox) "")
-  (docfun mp:mailbox-read function (mailbox) "")
-  (docfun mp:mailbox-try-read function (mailbox) "")
-  (docfun mp:mailbox-send function (mailbox) "")
-  (docfun mp:mailbox-try-send function (mailbox) "")
+  (docfun mp:make-mailbox function (&key name (count 128)) "
+Creates a mailbox with NAME and the queue's capacity COUNT.")
+
+  (docfun mp:mailbox-name function (mailbox) "
+Returns MAILBOX name.")
+
+  (docfun mp:mailbox-count function (mailbox) "
+Returns the maximum number of messages MAILBOX can queue
+without blocking a sender.")
+
+  (docfun mp:mailbox-empty-p function (mailbox) "
+Returns T if MAILBOX has zero queued messages. Otherwise returns NIL.")
+
+  (docfun mp:mailbox-read function (mailbox &key timeout) "
+Returns (values message T) or (values NIL NIL) if TIMEOUT expires. May block.")
+
+  (docfun mp:mailbox-try-read function (mailbox) "
+Returns (values message T) or (values NIL NIL) if MAILBOX is empty. Never blocks.")
+
+  (docfun mp:mailbox-send function (mailbox message &key timeout) "
+Sends MESSAGE to MAILBOX. Returns T on success, NIL on failure. May block.")
+
+  (docfun mp:mailbox-try-send function (mailbox message) "
+Sends MESSAGE to MAILBOX. Returns T on success, NIL on failure. Never blocks.")
 
   ;; Barriers
   (docfun mp:make-barrier function (count &key name) "")
