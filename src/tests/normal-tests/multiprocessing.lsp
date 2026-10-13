@@ -415,6 +415,43 @@
            (is (every #'identity flags))
            (is (mp:mailbox-empty-p mbox))))
 
+;;; Date: 12/10/2026
+;;;     MP:MAILBOX-SEND returns NIL when :TIMEOUT expires instead of blocking.
+(test-with-timeout mp.mbox.send-timeout-1-to-1
+    (let* ((flag t)
+           (mbox (mp:make-mailbox :name "mbox.send-timeout-1-to-1" :count 32))
+           (size (mp:mailbox-count mbox))
+           (a-process (mp:process-run-function
+                       "mbox.send-timeout-1-to-1"
+                       #'(lambda ()
+                           ;; Fill the mailbox. This does not block.
+                           (loop for i from 1 to size
+                                 do (mp:mailbox-send mbox i))
+                           ;; This would block without a timeout. Should return nil when times out.
+                           (setf flag (mp:mailbox-send mbox "message" :timeout 2))))))
+      (is flag)
+      (sleep 2)
+      (is (not (mp:mailbox-empty-p mbox))) ; the queue has messages
+      (is (null flag))
+      (mp:process-join a-process)))
+
+;;; Date: 12/10/2026
+;;;     MP:MAILBOX-READ returns NIL NIL when :TIMEOUT expires instead of blocking.
+(test-with-timeout mp.mbox.read-timeout-1-to-1
+    (let* ((message t)
+           (successp t)
+           (mbox (mp:make-mailbox :name "mbox.send-timeout-1-to-1" :count 32))
+           (a-process (mp:process-run-function
+                       "mbox.send-timeout-1-to-1"
+                       #'(lambda ()
+                           (multiple-value-setq (message successp)
+                             (mp:mailbox-read mbox :timeout 2))))))
+      (sleep 2.1)
+      (is (null message))
+      (is (null successp))
+      (mp:process-join a-process)))
+
+
 
 ;;; Date: 2016-11-10
 ;;; Description: CLASS-OF called on rwlock crashed lisp process

@@ -1868,10 +1868,10 @@ extern ECL_API cl_object mp_barrier_unblock _ECL_ARGS((cl_narg, cl_object, ...))
 extern ECL_API cl_object mp_make_mailbox _ECL_ARGS((cl_narg, ...));
 extern ECL_API cl_object mp_mailbox_name(cl_object mailbox);
 extern ECL_API cl_object mp_mailbox_count(cl_object mailbox);
+extern ECL_API cl_object mp_mailbox_read _ECL_ARGS((cl_narg narg, cl_object mailbox, ...));
 extern ECL_API cl_object mp_mailbox_empty_p(cl_object);
-extern ECL_API cl_object mp_mailbox_read(cl_object mailbox);
 extern ECL_API cl_object mp_mailbox_try_read(cl_object mailbox);
-extern ECL_API cl_object mp_mailbox_send(cl_object mailbox, cl_object msg);
+extern ECL_API cl_object mp_mailbox_send _ECL_ARGS((cl_narg narg, cl_object mailbox, cl_object message, ...));
 extern ECL_API cl_object mp_mailbox_try_send(cl_object mailbox, cl_object msg);
 
 /* threads/mutex.c */
