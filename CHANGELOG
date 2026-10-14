@@ -30,8 +30,11 @@
 * Pending changes since 26.5.5
 
 - added a new file CONTRIBUTING that outlines expected practices
+
 - build: support for Microsoft Visual Studio Compiler has been dropped
+
 - clos: ensure that the instance is not obsolete in optimized writer (#851)
+
 - reader: refactor reader and improve token parsing (escaping and packages)
 
 - bugfix: FUNCALLABLE-STANDARD-OBJECT instances are always treated as
@@ -56,6 +59,13 @@
 
 - bugfix: _ecl_/floats/_to_integer correctly checks float/fixnum limits;
   error caused incorrect rounding of doubles near MOST-POSITIVE-FIXNUM
+
+- documentation: mailbox abstraction is now documented in the manual and
+  exported functions have relevant docstrings
+
+- feature: mailbox operation MP:MAILBOX-READ and MP:MAILBOX-SEND accept now
+  a timeout argument and MP:MAILBOX{-TRY}-{READ,SEND} return now values
+  that allow distinguishing NIL message from unsuccessful operation
 
 * 26.5.5 changes since 26.3.27
 
