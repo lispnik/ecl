@@ -70,8 +70,8 @@
         (:export                {symbol-name}*)
         (:export-from           {package-name}*)
 
-  [Note: :EXPORT-FROM, :DOCUMENTATION, :LOCK and :LOCAL-NICKNAMES are
-         extensions to DEFPACKAGE.
+  [Note: :EXPORT-FROM, :LOCK and :LOCAL-NICKNAMES are extensions to
+         DEFPACKAGE.
 
          If a symbol is interned in the package being created and if a
          symbol with the same print name appears as an external symbol
