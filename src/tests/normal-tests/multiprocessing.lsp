@@ -428,9 +428,9 @@
                            (loop for i from 1 to size
                                  do (mp:mailbox-send mbox i))
                            ;; This would block without a timeout. Should return nil when times out.
-                           (setf flag (mp:mailbox-send mbox "message" :timeout 2))))))
+                           (setf flag (mp:mailbox-send mbox "message" :timeout .1))))))
       (is flag)
-      (sleep 2)
+      (sleep .2)
       (is (not (mp:mailbox-empty-p mbox))) ; the queue has messages
       (is (null flag))
       (mp:process-join a-process)))
@@ -445,8 +445,8 @@
                        "mbox.send-timeout-1-to-1"
                        #'(lambda ()
                            (multiple-value-setq (message successp)
-                             (mp:mailbox-read mbox :timeout 2))))))
-      (sleep 2.1)
+                             (mp:mailbox-read mbox :timeout .1))))))
+      (sleep .2)
       (is (null message))
       (is (null successp))
       (mp:process-join a-process)))
