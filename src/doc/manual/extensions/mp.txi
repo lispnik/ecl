@@ -20,6 +20,8 @@
 * Barriers dictionary::
 * Atomic operations::
 * Atomic operations dictionary::
+* Mailboxes::
+* Mailboxes dictionary::
 @end menu
 
 @node Introduction to native threads
@@ -62,4 +64,4 @@ the next section.
 @include extensions/mp_ref_sem.txi
 @include extensions/mp_ref_barrier.txi
 @include extensions/mp_ref_atomic.txi
-@c @include extensions/mp_ref_mailbox.txi
+@include extensions/mp_ref_mailbox.txi

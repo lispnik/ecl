@@ -89,29 +89,51 @@ read_message(cl_object mailbox)
 }
 
 cl_object
-mp_mailbox_read(cl_object mailbox)
+ecl_mailbox_read(cl_object mailbox, cl_object timeout)
 {
   cl_env_ptr env = ecl_process_env();
-  cl_object output;
+  cl_object output = ECL_NIL;
+  cl_object successp = ECL_NIL;
+  int timeoutp;
+
   unlikely_if (ecl_t_of(mailbox) != t_mailbox) {
     FEwrong_type_only_arg(@[mp::mailbox-read], mailbox, @[mp::mailbox]);
   }
   ecl_mutex_lock(&mailbox->mailbox.mutex);
   {
     while (mailbox->mailbox.message_count == 0) {
-      ecl_cond_var_wait(&mailbox->mailbox.reader_cv, &mailbox->mailbox.mutex);
+      if (timeout == ECL_NIL) {
+        ecl_cond_var_wait(&mailbox->mailbox.reader_cv, &mailbox->mailbox.mutex);
+      } else {
+        timeoutp = ecl_cond_var_timedwait(&mailbox->mailbox.reader_cv,
+                                           &mailbox->mailbox.mutex,
+                                           ecl_to_double(timeout));
+        if (timeoutp == ECL_MUTEX_TIMEOUT) goto CLEANUP;
+      }
     }
     output = read_message(mailbox);
+    successp = ECL_T;
   }
+
+ CLEANUP:
   ecl_mutex_unlock(&mailbox->mailbox.mutex);
-  ecl_return1(env, output);
+  ecl_return2(env, output, successp);
 }
+
+@(defun mp::mailbox-read (mailbox &key timeout)
+  @ {
+    cl_object message = ecl_mailbox_read(mailbox, timeout);
+    cl_object successp = ecl_nth_value(the_env, 1);
+    @(return message successp);
+  } @)
+
 
 cl_object
 mp_mailbox_try_read(cl_object mailbox)
 {
   cl_env_ptr env = ecl_process_env();
   cl_object output;
+  cl_object success_p;
   unlikely_if (ecl_t_of(mailbox) != t_mailbox) {
     FEwrong_type_only_arg(@[mp::mailbox-try-read], mailbox, @[mp::mailbox]);
   }
@@ -119,12 +141,14 @@ mp_mailbox_try_read(cl_object mailbox)
   {
     if (mailbox->mailbox.message_count == 0) {
       output = ECL_NIL;
+      success_p = ECL_NIL;
     } else {
       output = read_message(mailbox);
+      success_p = ECL_T;
     }
   }
   ecl_mutex_unlock(&mailbox->mailbox.mutex);
-  ecl_return1(env, output);
+  ecl_return2(env, output, success_p);
 }
 
 static void
@@ -140,22 +164,42 @@ store_message(cl_object mailbox, cl_object msg)
 }
 
 cl_object
-mp_mailbox_send(cl_object mailbox, cl_object msg)
+ecl_mailbox_send(cl_object mailbox, cl_object msg, cl_object timeout)
 {
   cl_env_ptr env = ecl_process_env();
+  int timeoutp;
+  cl_object successp = ECL_NIL;
+
   unlikely_if (ecl_t_of(mailbox) != t_mailbox) {
     FEwrong_type_only_arg(@[mp::mailbox-send], mailbox, @[mp::mailbox]);
   }
   ecl_mutex_lock(&mailbox->mailbox.mutex);
   {
     while (mailbox->mailbox.message_count == mailbox->mailbox.data->vector.dim) {
-      ecl_cond_var_wait(&mailbox->mailbox.writer_cv, &mailbox->mailbox.mutex);
+      if (timeout == ECL_NIL) {
+        ecl_cond_var_wait(&mailbox->mailbox.writer_cv, &mailbox->mailbox.mutex);
+      } else {
+        timeoutp = ecl_cond_var_timedwait(&mailbox->mailbox.writer_cv,
+                                           &mailbox->mailbox.mutex,
+                                           ecl_to_double(timeout));
+        if (timeoutp == ECL_MUTEX_TIMEOUT) goto CLEANUP;
+      }
     }
     store_message(mailbox, msg);
+    successp = ECL_T;
   }
+
+ CLEANUP:
   ecl_mutex_unlock(&mailbox->mailbox.mutex);
-  ecl_return1(env, msg);
+  ecl_return1(env, successp);
 }
+
+
+@(defun mp::mailbox-send (mailbox message &key timeout)
+  @ {
+    @(return ecl_mailbox_send(mailbox, message, timeout));
+  } @)
+
 
 cl_object
 mp_mailbox_try_send(cl_object mailbox, cl_object msg)
@@ -171,7 +215,7 @@ mp_mailbox_try_send(cl_object mailbox, cl_object msg)
       output = ECL_NIL;
     } else {
       store_message(mailbox, msg);
-      output = msg;
+      output = ECL_T;
     }
   }
   ecl_mutex_unlock(&mailbox->mailbox.mutex);
