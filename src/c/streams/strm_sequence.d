@@ -50,11 +50,12 @@ seq_write_object(cl_object strm, cl_object object)
 {
   cl_object vec = SEQ_STREAM_VECTOR(strm);
   cl_fixnum pos = SEQ_STREAM_POSITION(strm);
-  cl_fixnum dim = vec->vector.dim;
  AGAIN:
+  cl_fixnum dim = vec->vector.dim;
   if (pos >= dim) {
-    cl_object size = ecl_ash(ecl_make_fixnum(dim), 1);
-    SEQ_STREAM_VECTOR(strm) = vec = si_adjust_vector(vec, size);
+    /* We can't pass 0 to ecl_ash, it will return 0 and cause a hang. */
+    cl_object size = ecl_ash(ecl_make_fixnum(dim ? dim : 1), 1);
+    SEQ_STREAM_VECTOR(strm) = vec =  si_adjust_vector(vec, size);
     goto AGAIN;
   }
   ecl_aset(vec, pos++, object);
