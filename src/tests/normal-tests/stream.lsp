@@ -212,3 +212,11 @@
     (signals error (write-char #\z stream))
     (dotimes (v 2) (eql #\z (read-char stream)))
     (signals error (read-char stream))))
+
+
+;; Ensure that a C funtion seq_write_object doesn't hang when it's given a
+;; zero-length vector
+(test-with-timeout (stream.seq-write-object-zero-lengh-vector 5)
+  (let* ((array (make-array 0 :adjustable t :fill-pointer 0 :element-type '(unsigned-byte 8)))
+         (stream (ext:make-sequence-output-stream array)))
+    (is (write-byte 42 stream))))
