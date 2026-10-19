@@ -70,6 +70,10 @@
   a timeout argument and MP:MAILBOX{-TRY}-{READ,SEND} return now values
   that allow distinguishing NIL message from unsuccessful operation
 
+- bugfix: WRITE-BYTE to a stream created with MAKE-SEQUENCE-OUTPUT-STREAM
+  from a zero-length adjustable vector as described in issue #791 doesn't
+  hang and returns normally.
+
 * 26.5.5 changes since 26.3.27
 
 - bugfix: MAKE-PACKAGE destructively modified defining form's cons cells of
